@@ -18,16 +18,39 @@ public abstract class AbstractEntityFactory<T, R> implements EntityFactory<T, R>
      * {@inheritDoc}
      */
     @Override
+    public T create(R request) {
+        log.info("{}_ФАБРИКА_СОЗДАНИЕ_НАЧАЛО: создание сущности",
+                getFactoryName());
+
+        T entity = buildEntity(request);
+
+        log.info("{}_ФАБРИКА_СОЗДАНИЕ_УСПЕХ: сущность создана",
+                getFactoryName());
+        return entity;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public T create(UUID userId, R request) {
         log.info("{}_ФАБРИКА_СОЗДАНИЕ_НАЧАЛО: создание сущности для пользователя: {}",
                 getFactoryName(), userId);
 
-        T entity = buildEntity(userId, request);
+        T entity = buildEntityWithUserId(userId, request);
 
         log.info("{}_ФАБРИКА_СОЗДАНИЕ_УСПЕХ: сущность создана для пользователя: {}",
                 getFactoryName(), userId);
         return entity;
     }
+
+    /**
+     * Создает сущность на основе запроса.
+     *
+     * @param request данные для создания сущности (может быть null)
+     * @return созданная сущность
+     */
+    protected abstract T buildEntity(R request);
 
     /**
      * Создает сущность на основе данных пользователя и запроса.
@@ -36,7 +59,9 @@ public abstract class AbstractEntityFactory<T, R> implements EntityFactory<T, R>
      * @param request данные для создания сущности (может быть null)
      * @return созданная сущность
      */
-    protected abstract T buildEntity(UUID userId, R request);
+    protected T buildEntityWithUserId(UUID userId, R request) {
+        return buildEntity(request);
+    }
 
     /**
      * Возвращает имя фабрики для логирования.

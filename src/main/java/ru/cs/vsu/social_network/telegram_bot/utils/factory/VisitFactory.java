@@ -1,5 +1,6 @@
 package ru.cs.vsu.social_network.telegram_bot.utils.factory;
 
+import ru.cs.vsu.social_network.telegram_bot.entity.User;
 import ru.cs.vsu.social_network.telegram_bot.entity.Visit;
 import ru.cs.vsu.social_network.telegram_bot.utils.factory.EntityFactory;
 
@@ -12,13 +13,12 @@ import java.util.UUID;
 public interface VisitFactory extends EntityFactory<Visit, Void> {
 
     /**
-     * Создает посещение для пользователя по его ID.
+     * Создает посещение для пользователя.
      *
-     * @param userId идентификатор пользователя
      * @return созданное посещение
      */
     @Override
-    Visit create(UUID userId, Void request);
+    Visit create(Void request);
 
     /**
      * Создает посещение для пользователя по его Telegram ID.
@@ -27,4 +27,21 @@ public interface VisitFactory extends EntityFactory<Visit, Void> {
      * @return созданное посещение
      */
     Visit createFromTelegramId(Long telegramId);
+
+    /**
+     * Создает посещение для текущего времени (альтернативный метод).
+     *
+     * @param user пользователь
+     * @return созданное посещение
+     */
+    Visit createForUser(User user);
+
+    /**
+     * Создает посещение пользователя с данными.
+     *
+     * @param userId идентификатор пользователя
+     * @param request dto данные
+     * @return созданное посещение
+     */
+    Visit buildEntityWithUserId(UUID userId, Void request);
 }

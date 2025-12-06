@@ -1,5 +1,7 @@
 package ru.cs.vsu.social_network.telegram_bot.validation;
 
+import ru.cs.vsu.social_network.telegram_bot.exception.VisitRepeatException;
+
 import java.util.UUID;
 
 /**
@@ -15,4 +17,12 @@ public interface VisitValidator {
      * @throws AccessDeniedException если пользователь не имеет доступа
      */
     void validateUserAccess(UUID userId, UUID visitId);
+
+    /**
+     * Проверяет, отмечался ли пользователь уже сегодня.
+     *
+     * @param userId идентификатор пользователя
+     * @throws VisitRepeatException если пользователь уже отмечался
+     */
+    void validateRepeatVisit(UUID userId);
 }

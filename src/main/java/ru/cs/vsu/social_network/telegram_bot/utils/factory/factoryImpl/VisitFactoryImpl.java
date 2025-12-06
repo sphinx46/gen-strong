@@ -33,13 +33,23 @@ public final class VisitFactoryImpl extends AbstractEntityFactory<Visit, Void>
      * {@inheritDoc}
      */
     @Override
-    protected Visit buildEntity(UUID userId, Void request) {
+    protected Visit buildEntity(Void request) {
+        log.warn("{}_ФАБРИКА_ПОСТРОЕНИЕ_ПРЕДУПРЕЖДЕНИЕ: попытка создания посещения без пользователя",
+                ENTITY_NAME);
+        throw new IllegalStateException("Для создания посещения требуется идентификатор пользователя");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Visit buildEntityWithUserId(UUID userId, Void request) {
         log.info("{}_ФАБРИКА_ПОСТРОЕНИЕ_НАЧАЛО: построение посещения для пользователя ID: {}",
                 ENTITY_NAME, userId);
 
-        User user = userEntityProvider.getById(userId);
+        final User user = userEntityProvider.getById(userId);
 
-        Visit visit = Visit.builder()
+        final Visit visit = Visit.builder()
                 .user(user)
                 .visitDate(LocalDateTime.now())
                 .build();
@@ -66,7 +76,7 @@ public final class VisitFactoryImpl extends AbstractEntityFactory<Visit, Void>
         log.info("{}_ФАБРИКА_СОЗДАНИЕ_ИЗ_TELEGRAM_НАЧАЛО: создание посещения для Telegram ID: {}",
                 ENTITY_NAME, telegramId);
 
-        User user = userEntityProvider.findByTelegramId(telegramId)
+        final User user = userEntityProvider.findByTelegramId(telegramId)
                 .orElseThrow(() -> {
                     log.error("{}_ФАБРИКА_СОЗДАНИЕ_ИЗ_TELEGRAM_ОШИБКА: " +
                                     "пользователь с Telegram ID {} не найден",
@@ -75,7 +85,7 @@ public final class VisitFactoryImpl extends AbstractEntityFactory<Visit, Void>
                             String.format(MessageConstants.USER_NOT_FOUND_BY_TELEGRAM_ID_FAILURE, telegramId));
                 });
 
-        Visit visit = Visit.builder()
+        final Visit visit = Visit.builder()
                 .user(user)
                 .visitDate(LocalDateTime.now())
                 .build();
@@ -88,16 +98,13 @@ public final class VisitFactoryImpl extends AbstractEntityFactory<Visit, Void>
     }
 
     /**
-     * Создает посещение для текущего времени (альтернативный метод).
-     *
-     * @param user пользователь
-     * @return созданное посещение
+     * {@inheritDoc}
      */
     public Visit createForUser(User user) {
         log.info("{}_ФАБРИКА_СОЗДАНИЕ_ДЛЯ_ПОЛЬЗОВАТЕЛЯ_НАЧАЛО: для пользователя: {}",
                 ENTITY_NAME, user.getId());
 
-        Visit visit = Visit.builder()
+        final Visit visit = Visit.builder()
                 .user(user)
                 .visitDate(LocalDateTime.now())
                 .build();

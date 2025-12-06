@@ -21,15 +21,23 @@ public final class UserFactoryImpl extends AbstractEntityFactory<User, UserCreat
      * {@inheritDoc}
      */
     @Override
-    protected User buildEntity(UUID userId, UserCreateRequest request) {
+    protected User buildEntity(UserCreateRequest request) {
         return User.builder()
                 .telegramId(request.getTelegramId())
                 .username(request.getUsername())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .displayName(request.getDisplayName())
-                .role(ROLE.USER)
+                .role(request.getRole() != null ? request.getRole() : ROLE.USER)
                 .build();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected User buildEntityWithUserId(UUID userId, UserCreateRequest request) {
+        return buildEntity(request);
     }
 
     /**

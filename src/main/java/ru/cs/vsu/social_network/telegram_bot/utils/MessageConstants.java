@@ -7,6 +7,7 @@ public class MessageConstants {
 
     // VISIT
     public final static String VISIT_NOT_FOUND_FAILURE = "Ошибка! Посещение не найдено";
+    public final static String VISIT_ALREADY_FAILURE = "Ошибка! Вы уже отметились сегодня";
 
     // USER
     public final static String USER_NOT_FOUND_FAILURE = "Ошибка! Пользователь не найден";
@@ -18,6 +19,7 @@ public class MessageConstants {
     // ROLE
     public final static String ADMIN_ACCESS_REQUIRED = "Ошибка! Пользователь не является администратором";
     public final static String ROLE_ACCESS_REQUIRED = "Ошибка! Пользователь не имеет требуемую роль";
+
 
 
 }

@@ -1,0 +1,71 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:gymbot_testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 3
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+
+  h2:
+    console:
+      enabled: false
+
+  cache:
+    type: none
+
+  task:
+    scheduling:
+      enabled: false
+
+telegram:
+  bot:
+    token: test_bot_token
+    username: gym_bot_test
+    name: "Gym Bot Test"
+    long-polling:
+      timeout: 5
+      limit: 10
+      max-threads: 2
+
+app:
+  security:
+    admin-telegram-ids: "999888777"
+
+  scheduler:
+    enabled: false
+
+  cache:
+    enabled: false
+
+  features:
+    enable-notifications: false
+    enable-analytics: false
+
+  test:
+    data:
+      initialize: true
+    security:
+      mock-auth: true
+
+logging:
+  level:
+    ru.cs.vsu.social_network.telegram_bot: WARN
+    org.springframework.test: INFO
+    org.hibernate.SQL: WARN
+
+  file:
+    enabled: false

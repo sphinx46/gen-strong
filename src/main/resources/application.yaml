@@ -1,0 +1,117 @@
+spring:
+  application:
+    name: telegram-gym-bot
+
+  profiles:
+    active: ${APP_PROFILE:dev}
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+  cache:
+    type: simple
+    cache-names: users,visits,reports
+    caffeine:
+      spec: maximumSize=1000,expireAfterAccess=1h
+
+  task:
+    scheduling:
+      enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: ${SERVER_CONTEXT_PATH:}
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:}
+    username: ${TELEGRAM_BOT_USERNAME:}
+    name: ${TELEGRAM_BOT_NAME:Gym Bot}
+    long-polling:
+      timeout: ${TELEGRAM_POLLING_TIMEOUT:30}
+      limit: ${TELEGRAM_POLLING_LIMIT:100}
+      max-threads: ${TELEGRAM_POLLING_THREADS:10}
+    commands:
+      start: "/start"
+      check-in: "Я в зале"
+      admin: "/admin"
+      report-all: "/report_all"
+      report-date: "/report_date"
+    messages:
+      welcome: "Добро пожаловать! Как к вам обращаться?"
+      check-in-success: "✅ Успешно записаны!"
+      already-checked-in: "⚠️ Вы уже отметились сегодня!"
+      admin-greeting: "👨‍💼 Панель администратора:"
+      report-prompt: "📊 Выберите тип отчета:"
+    proxy:
+      enabled: ${TELEGRAM_PROXY_ENABLED:false}
+      host: ${TELEGRAM_PROXY_HOST:}
+      port: ${TELEGRAM_PROXY_PORT:}
+      type: ${TELEGRAM_PROXY_TYPE:SOCKS5}
+
+app:
+  security:
+    admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:}
+    max-login-attempts: 5
+
+  scheduler:
+    enabled: ${SCHEDULER_ENABLED:true}
+    cleanup:
+      enabled: true
+      cron: "0 0 2 * * ?"
+      retention-days: 90
+    report:
+      enabled: true
+      cron: "0 0 20 * * ?"
+
+  cache:
+    enabled: ${CACHE_ENABLED:true}
+    ttl-hours: ${CACHE_TTL_HOURS:24}
+
+  features:
+    enable-notifications: ${ENABLE_NOTIFICATIONS:true}
+    enable-analytics: ${ENABLE_ANALYTICS:false}
+
+logging:
+  level:
+    ru.cs.vsu.social_network.telegram_bot: ${LOG_LEVEL:INFO}
+    org.springframework.web: INFO
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:WARN}
+    org.telegram: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_PATH:logs/gym-bot.log}
+    max-size: 10MB
+    max-history: 30

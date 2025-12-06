@@ -28,6 +28,11 @@
     </scm>
     <properties>
         <java.version>21</java.version>
+        <spring-boot-starter-data-jpa.version>4.0.0</spring-boot-starter-data-jpa.version>
+        <springdoc.version>2.3.0</springdoc.version>
+        <org.telegrambots.version>6.9.7.1</org.telegrambots.version>
+        <telegrambots-longpolling.version>9.2.0</telegrambots-longpolling.version>
+        <jakarta.persistence-api.version>3.2.0</jakarta.persistence-api.version>
     </properties>
     <dependencies>
         <dependency>
@@ -37,7 +42,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
-            <version>4.0.0</version>
+            <version>${spring-boot-starter-data-jpa.version}</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -47,12 +52,21 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.3.0</version>
+            <version>${springdoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.telegram</groupId>
+            <artifactId>telegrambots</artifactId>
+            <version>${org.telegrambots.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.telegram</groupId>
+            <artifactId>telegrambots-longpolling</artifactId>
+            <version>${telegrambots-longpolling.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -67,7 +81,7 @@
         <dependency>
             <groupId>jakarta.persistence</groupId>
             <artifactId>jakarta.persistence-api</artifactId>
-            <version>3.2.0</version>
+            <version>${jakarta.persistence-api.version}</version>
         </dependency>
     </dependencies>
 

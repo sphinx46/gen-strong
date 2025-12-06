@@ -25,6 +25,9 @@ public class ReportResponse {
     @Schema(description = "Количество уникальных посетителей")
     private Integer uniqueVisitors;
 
+    @Schema(description = "Количество новых пользователей")
+    private Integer totalNewUsers;
+
     @Schema(description = "Среднее количество посещений в день")
     private Double averageDailyVisits;
 

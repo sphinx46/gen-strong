@@ -13,7 +13,15 @@ import java.util.List;
 @Builder
 @Schema(description = "Статистика за день")
 public class DailyStatsResponse {
+    @Schema(description = "Дата")
     private LocalDate date;
-    private Integer visitorCount;
+
+    @Schema(description = "Список посетителей")
     private List<String> visitorNames;
+
+    @Schema(description = "Количество посетителей")
+    private Integer visitorCount;
+
+    @Schema(description = "Количество новых пользователей")
+    private int newUsersCount;
 }

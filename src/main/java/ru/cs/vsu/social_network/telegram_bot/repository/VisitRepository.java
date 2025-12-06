@@ -129,4 +129,48 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
         }
         return visits;
     }
+
+    /**
+     * Подсчитывает количество новых пользователей за указанную дату.
+     * Новым считается пользователь, у которого это первое посещение в системе.
+     *
+     * @param date дата для подсчета
+     * @return количество новых пользователей за указанный день
+     */
+    @Query("SELECT COUNT(DISTINCT v.user.id) FROM Visit v " +
+            "WHERE DATE(v.visitDate) = :date " +
+            "AND NOT EXISTS (SELECT 1 FROM Visit v2 " +
+            "WHERE v2.user.id = v.user.id " +
+            "AND DATE(v2.visitDate) < :date)")
+    int countNewUsersByDate(@Param("date") LocalDate date);
+
+    /**
+     * Подсчитывает количество новых пользователей за диапазон дат.
+     * Новым считается пользователь, у которого первое посещение попадает в этот период.
+     *
+     * @param startDate начальная дата (включительно)
+     * @param endDate конечная дата (включительно)
+     * @return количество новых пользователей за указанный период
+     */
+    @Query("SELECT COUNT(DISTINCT v.user.id) FROM Visit v " +
+            "WHERE DATE(v.visitDate) BETWEEN :startDate AND :endDate " +
+            "AND NOT EXISTS (SELECT 1 FROM Visit v2 " +
+            "WHERE v2.user.id = v.user.id " +
+            "AND DATE(v2.visitDate) < :startDate)")
+    int countNewUsersByDateRange(@Param("startDate") LocalDate startDate,
+                                 @Param("endDate") LocalDate endDate);
+
+    /**
+     * Находит всех новых пользователей за указанную дату.
+     * Новым считается пользователь, у которого это первое посещение.
+     *
+     * @param date дата для поиска
+     * @return список посещений новых пользователей
+     */
+    @Query("SELECT v FROM Visit v JOIN FETCH v.user " +
+            "WHERE DATE(v.visitDate) = :date " +
+            "AND NOT EXISTS (SELECT 1 FROM Visit v2 " +
+            "WHERE v2.user.id = v.user.id " +
+            "AND DATE(v2.visitDate) < :date)")
+    List<Visit> findNewUsersByDate(@Param("date") LocalDate date);
 }

@@ -116,4 +116,69 @@ public final class VisitEntityProviderImpl extends AbstractEntityProvider<Visit>
 
         return visit;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int countNewUsersByDate(LocalDate date) {
+        log.info("{}_ПРОВАЙДЕР_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_НАЧАЛО: " +
+                "для даты: {}", ENTITY_NAME, date);
+
+        try {
+            final int newUsersCount = visitRepository.countNewUsersByDate(date);
+
+            log.info("{}_ПРОВАЙДЕР_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_УСПЕХ: " +
+                            "найдено {} новых пользователей за дату: {}",
+                    ENTITY_NAME, newUsersCount, date);
+
+            return newUsersCount;
+        } catch (Exception e) {
+            log.error("{}_ПРОВАЙДЕР_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_ОШИБКА: " +
+                            "ошибка при подсчете новых пользователей за дату {}: {}",
+                    ENTITY_NAME, date, e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int countNewUsersByDateRange(LocalDate startDate, LocalDate endDate) {
+        log.info("{}_ПРОВАЙДЕР_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ПЕРИОД_НАЧАЛО: " +
+                "с {} по {}", ENTITY_NAME, startDate, endDate);
+
+        try {
+            final int newUsersCount = visitRepository.countNewUsersByDateRange(startDate, endDate);
+
+            log.info("{}_ПРОВАЙДЕР_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ПЕРИОД_УСПЕХ: " +
+                            "найдено {} новых пользователей за период {} - {}",
+                    ENTITY_NAME, newUsersCount, startDate, endDate);
+
+            return newUsersCount;
+        } catch (Exception e) {
+            log.error("{}_ПРОВАЙДЕР_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ПЕРИОД_ОШИБКА: " +
+                            "ошибка при подсчете новых пользователей за период {} - {}: {}",
+                    ENTITY_NAME, startDate, endDate, e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Visit> findNewUsersByDate(LocalDate date) {
+        log.info("{}_ПРОВАЙДЕР_ПОИСК_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_НАЧАЛО: " +
+                "для даты: {}", ENTITY_NAME, date);
+
+        final List<Visit> newUserVisits = visitRepository.findNewUsersByDate(date);
+
+        log.info("{}_ПРОВАЙДЕР_ПОИСК_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_УСПЕХ: " +
+                        "найдено {} новых пользователей за дату: {}",
+                ENTITY_NAME, newUserVisits.size(), date);
+
+        return newUserVisits;
+    }
 }

@@ -57,5 +57,35 @@ public interface VisitEntityProvider extends EntityProvider<Visit> {
      * @param end конец дня
      * @return Optional с посещением, если найдено
      */
-    Optional<Visit> findByUserAndVisitDateBetween(User user, LocalDateTime start, LocalDateTime end);
+    Optional<Visit> findByUserAndVisitDateBetween(User user,
+                                                  LocalDateTime start,
+                                                  LocalDateTime end);
+
+    /**
+     * Подсчитывает количество новых пользователей за указанную дату.
+     * Новым считается пользователь, у которого это первое посещение в системе.
+     *
+     * @param date дата для подсчета
+     * @return количество новых пользователей за указанный день
+     */
+    int countNewUsersByDate(LocalDate date);
+
+    /**
+     * Подсчитывает количество новых пользователей за диапазон дат.
+     * Новым считается пользователь, у которого первое посещение попадает в этот период.
+     *
+     * @param startDate начальная дата (включительно)
+     * @param endDate конечная дата (включительно)
+     * @return количество новых пользователей за указанный период
+     */
+    int countNewUsersByDateRange(LocalDate startDate, LocalDate endDate);
+
+
+    /**
+     * Находит всех новых пользователей за указанную дату.
+     *
+     * @param date дата для поиска
+     * @return список посещений новых пользователей
+     */
+    List<Visit> findNewUsersByDate(LocalDate date);
 }

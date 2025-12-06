@@ -160,7 +160,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             case "/report":
                 return handleReportCommand(telegramId, parts);
 
-            case "/report_period":
+            case "/report period":
                 return handleReportPeriodCommand(telegramId, parts);
 
             case "/table":
@@ -222,12 +222,12 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обрабатывает команду /report_period.
+     * Обрабатывает команду /report period.
      * Генерирует отчет за указанный период времени.
-     * Формат команды: /report_period ДД.ММ.ГГГГ ДД.ММ.ГГГГ
+     * Формат команды: /report period ДД.ММ.ГГГГ ДД.ММ.ГГГГ
      *
      * @param telegramId Telegram ID пользователя
-     * @param parts части команды: [0]="/report_period", [1]=начальная дата, [2]=конечная дата
+     * @param parts части команды: [0]="/report period", [1]=начальная дата, [2]=конечная дата
      * @return отчет за период или сообщение об ошибке
      */
     private String handleReportPeriodCommand(final Long telegramId, final String[] parts) {
@@ -235,8 +235,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             log.warn("{}_КОМАНДА_REPORT_PERIOD_НЕПОЛНАЯ: недостаточно параметров от {}",
                     BOT_NAME, telegramId);
             return "❌ *Неверный формат команды!*\n" +
-                    "Используйте: /report_period ДД.ММ.ГГГГ ДД.ММ.ГГГГ\n" +
-                    "Пример: /report_period 01.12.2025 06.12.2025";
+                    "Используйте: /report period ДД.ММ.ГГГГ ДД.ММ.ГГГГ\n" +
+                    "Пример: /report period 01.12.2025 06.12.2025";
         }
 
         final String startDateStr = parts[1];
@@ -352,7 +352,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 keyboard.add(adminRow2);
 
                 final KeyboardRow adminRow3 = new KeyboardRow();
-                adminRow3.add(new KeyboardButton("/report_period"));
+                adminRow3.add(new KeyboardButton("/report period"));
                 keyboard.add(adminRow3);
 
                 final KeyboardRow helpRow = new KeyboardRow();

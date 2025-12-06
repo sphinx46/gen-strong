@@ -244,7 +244,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
             } catch (DateTimeParseException e) {
                 return "❌ *Неверный формат даты!*\n" +
                         "Используйте формат: ДД.ММ.ГГГГ\n" +
-                        "Пример: /report_period 01.12.2025 06.12.2025";
+                        "Пример: /report period 01.12.2025 06.12.2025";
             }
 
             if (startDate.isAfter(endDate)) {
@@ -344,8 +344,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 response.append("• /report - Отчет посещений за сегодня\n");
                 response.append("• /report [дата] - Отчет за определенный день\n");
                 response.append("  Пример: /report 06.12.2025\n");
-                response.append("• /report_period [начало] [конец] - Отчет за период\n");
-                response.append("  Пример: /report_period 01.12.2025 06.12.2025\n");
+                response.append("• /report period [начало] [конец] - Отчет за период\n");
+                response.append("  Пример: /report period 01.12.2025 06.12.2025\n");
                 response.append("• /help - Показать эту справку\n");
             } else {
                 response.append("• /help - Показать справку по командам\n");
@@ -437,7 +437,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                     SERVICE_NAME, startDateStr, endDateStr);
             return "❌ *Неверный формат даты!*\n" +
                     "Используйте формат: ДД.ММ.ГГГГ ДД.ММ.ГГГГ\n" +
-                    "Пример: /report_period 01.12.2025 06.12.2025";
+                    "Пример: /report period 01.12.2025 06.12.2025";
         }
     }
 }

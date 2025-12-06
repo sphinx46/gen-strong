@@ -10,6 +10,7 @@ public class MessageConstants {
 
     // USER
     public final static String USER_NOT_FOUND_FAILURE = "Ошибка! Пользователь не найден";
+    public final static String USER_NOT_FOUND_BY_TELEGRAM_ID_FAILURE = "Ошибка! Пользователь с указанными telegram id не найден";
 
 
 }

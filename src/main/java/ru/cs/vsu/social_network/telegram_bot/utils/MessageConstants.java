@@ -12,5 +12,12 @@ public class MessageConstants {
     public final static String USER_NOT_FOUND_FAILURE = "Ошибка! Пользователь не найден";
     public final static String USER_NOT_FOUND_BY_TELEGRAM_ID_FAILURE = "Ошибка! Пользователь с указанными telegram id не найден";
 
+    // SERVER
+    public final static String ACCESS_DENIED = "Ошибка! Доступ запрещён";
+
+    // ROLE
+    public final static String ADMIN_ACCESS_REQUIRED = "Ошибка! Пользователь не является администратором";
+    public final static String ROLE_ACCESS_REQUIRED = "Ошибка! Пользователь не имеет требуемую роль";
+
 
 }

@@ -26,6 +26,6 @@ public class VisitorLog extends BaseEntity {
     @Column(name = "raw_data", columnDefinition = "TEXT")
     private String rawData;
 
-    @Column(name = "log_date", unique = true)  // ДОБАВИТЬ!
+    @Column(name = "log_date")
     private LocalDate logDate;
 }

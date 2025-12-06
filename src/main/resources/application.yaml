@@ -7,12 +7,14 @@ spring:
 
   jpa:
     open-in-view: false
+    generate-ddl: true
     properties:
       hibernate:
+        ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
         jdbc:
-          batch_size: 20
-        order_inserts: true
-        order_updates: true
+          lob:
+            non_contextual_creation: true
+        current_session_context_class: thread
 
   servlet:
     multipart:
@@ -61,6 +63,11 @@ telegram:
       timeout: ${TELEGRAM_POLLING_TIMEOUT:30}
       limit: ${TELEGRAM_POLLING_LIMIT:100}
       max-threads: ${TELEGRAM_POLLING_THREADS:10}
+    proxy:
+      enabled: ${TELEGRAM_PROXY_ENABLED:false}
+      host: ${TELEGRAM_PROXY_HOST:}
+      port: ${TELEGRAM_PROXY_PORT:}
+      type: ${TELEGRAM_PROXY_TYPE:SOCKS5}
     commands:
       start: "/start"
       check-in: "Я в зале"
@@ -73,11 +80,6 @@ telegram:
       already-checked-in: "⚠️ Вы уже отметились сегодня!"
       admin-greeting: "👨‍💼 Панель администратора:"
       report-prompt: "📊 Выберите тип отчета:"
-    proxy:
-      enabled: ${TELEGRAM_PROXY_ENABLED:false}
-      host: ${TELEGRAM_PROXY_HOST:}
-      port: ${TELEGRAM_PROXY_PORT:}
-      type: ${TELEGRAM_PROXY_TYPE:SOCKS5}
 
 app:
   security:

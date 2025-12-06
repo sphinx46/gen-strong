@@ -4,29 +4,57 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:h2:mem:gymbotdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: ${DB_URL:jdbc:postgresql://telegram-postgres:5432/gymbot_dev}
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
     hikari:
       maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: GymBotDevPool
+      connection-test-query: SELECT 1
+      auto-commit: false
+      transaction-isolation: TRANSACTION_READ_COMMITTED
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create
+    generate-ddl: true
     show-sql: true
+    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         use_sql_comments: true
+        jdbc:
+          batch_size: 10
+          fetch_size: 50
+          lob:
+            non_contextual_creation: true
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+        default_batch_fetch_size: 10
+        default_schema: public
+        connection:
+          provider_disables_autocommit: true
+        connection.handling_mode: DELAYED_ACQUISITION_AND_RELEASE_AFTER_TRANSACTION
+        transaction:
+          jta:
+            platform: org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform
 
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-      settings:
-        web-allow-others: false
+  sql:
+    init:
+      mode: never
+      continue-on-error: true
+
+  flyway:
+    enabled: false
 
   cache:
     type: simple
@@ -36,37 +64,106 @@ spring:
 telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN:YOUR_DEV_BOT_TOKEN}
-    username: gym_bot_dev
-    name: "Gym Bot Dev"
+    username: ${TELEGRAM_BOT_USERNAME:gym_bot_dev}
+    name: ${TELEGRAM_BOT_NAME:"Gym Bot Dev"}
     long-polling:
-      timeout: 10
-      limit: 50
-      max-threads: 5
+      timeout: ${TELEGRAM_POLLING_TIMEOUT:10}
+      limit: ${TELEGRAM_POLLING_LIMIT:50}
+      max-threads: ${TELEGRAM_POLLING_THREADS:5}
+    proxy:
+      enabled: ${TELEGRAM_PROXY_ENABLED:false}
+      host: ${TELEGRAM_PROXY_HOST:}
+      port: ${TELEGRAM_PROXY_PORT:0}
+      type: ${TELEGRAM_PROXY_TYPE:SOCKS5}
 
 app:
   security:
-    admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:123456789}
+    admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:2056410944}
+    max-login-attempts: ${MAX_LOGIN_ATTEMPTS:3}
 
   scheduler:
-    enabled: false
+    enabled: ${SCHEDULER_ENABLED:false}
+    cleanup:
+      enabled: false
+      cron: "0 0 2 * * ?"
+      retention-days: ${DATA_RETENTION_DAYS:7}
+    report:
+      enabled: false
+      cron: "0 0 20 * * ?"
 
   cache:
-    enabled: false
+    enabled: ${CACHE_ENABLED:false}
+    ttl-hours: ${CACHE_TTL_HOURS:1}
+    max-size: ${CACHE_MAX_SIZE:100}
+    type: ${CACHE_TYPE:caffeine}
 
   features:
-    enable-notifications: false
-    enable-analytics: false
+    enable-notifications: ${ENABLE_NOTIFICATIONS:false}
+    enable-analytics: ${ENABLE_ANALYTICS:false}
+
+  monitoring:
+    prometheus:
+      enabled: ${PROMETHEUS_ENABLED:false}
 
   mock:
+    enabled: ${MOCK_ENABLED:true}
+    user-count: ${MOCK_USER_COUNT:5}
+
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: ${SERVER_CONTEXT_PATH:}
+  compression:
     enabled: true
-    user-count: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: db
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: ${PROMETHEUS_ENABLED:false}
+    tags:
+      application: telegram-gym-bot
+      environment: dev
 
 logging:
   level:
-    ru.cs.vsu.social_network.telegram_bot: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.telegram: DEBUG
+    root: ${LOG_LEVEL:INFO}
+    ru.cs.vsu.social_network.telegram_bot: ${LOG_LEVEL:DEBUG}
+    org.springframework: ${LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:DEBUG}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${HIBERNATE_SQL_LOG:TRACE}
+    org.telegram: ${LOG_LEVEL:DEBUG}
+    org.telegram.telegrambots: DEBUG
+    org.telegram.telegrambots.meta: DEBUG
+    org.postgresql: WARN
+    com.zaxxer.hikari: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"
 
   file:
-    name: logs/gym-bot-dev.log
+    name: ${LOG_FILE_PATH:logs/gym-bot-dev.log}
+    max-size: ${LOG_FILE_MAX_SIZE:10MB}
+    max-history: ${LOG_FILE_MAX_HISTORY:30}
+    clean-history-on-start: true
+
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_FILE_MAX_SIZE:10MB}
+      max-history: ${LOG_FILE_MAX_HISTORY:30}

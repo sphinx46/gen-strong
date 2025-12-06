@@ -1,9 +1,6 @@
 package ru.cs.vsu.social_network.telegram_bot.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import ru.cs.vsu.social_network.telegram_bot.entity.enums.ROLE;
 
@@ -32,6 +29,7 @@ public class User extends BaseEntity {
     @Column(name = "display_name")
     private String displayName;
 
-    @Column(name = "role")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", columnDefinition = "VARCHAR(20) DEFAULT 'USER'")
     private ROLE role;
 }

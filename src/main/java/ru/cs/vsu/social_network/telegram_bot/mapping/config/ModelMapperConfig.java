@@ -169,7 +169,8 @@ public class ModelMapperConfig {
             @Override
             protected void configure() {
                 map().setId(source.getId());
-                map().setVisitorsCount(source.getVisitorCount());
+                map().setVisitorCount(source.getVisitorCount());
+                map().setRawData(source.getRawData());
                 map().setLogDate(source.getLogDate());
                 map().setCreatedAt(source.getCreatedAt());
                 map().setUpdatedAt(source.getUpdatedAt());

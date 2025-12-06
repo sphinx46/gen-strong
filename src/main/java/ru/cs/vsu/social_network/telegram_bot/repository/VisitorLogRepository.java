@@ -77,4 +77,26 @@ public interface VisitorLogRepository extends JpaRepository<VisitorLog, UUID> {
      */
     @Query("SELECT vl FROM VisitorLog vl ORDER BY vl.logDate DESC")
     List<VisitorLog> findLatest(@Param("limit") int limit);
+
+    /**
+     * Находит все записи журнала в указанном диапазоне дат, отсортированные по убыванию даты.
+     * Используется для получения журналов за период.
+     *
+     * @param startDate начальная дата диапазона (включительно)
+     * @param endDate конечная дата диапазона (включительно)
+     * @return список записей журнала, отсортированный по дате в порядке убывания
+     */
+    List<VisitorLog> findAllByLogDateBetweenOrderByLogDateDesc(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Находит все записи журнала в указанном диапазоне дат.
+     * Альтернативная версия с явным JPQL запросом.
+     *
+     * @param startDate начальная дата диапазона (включительно)
+     * @param endDate конечная дата диапазона (включительно)
+     * @return список записей журнала, отсортированный по дате в порядке убывания
+     */
+    @Query("SELECT vl FROM VisitorLog vl WHERE vl.logDate >= :startDate AND vl.logDate <= :endDate ORDER BY vl.logDate DESC")
+    List<VisitorLog> findAllByDateRange(@Param("startDate") LocalDate startDate,
+                                        @Param("endDate") LocalDate endDate);
 }

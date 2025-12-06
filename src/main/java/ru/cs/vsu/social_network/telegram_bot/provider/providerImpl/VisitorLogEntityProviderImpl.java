@@ -96,4 +96,20 @@ public final class VisitorLogEntityProviderImpl extends AbstractEntityProvider<V
 
         return logs;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<VisitorLog> findByPeriod(LocalDate startDate, LocalDate endDate) {
+        log.info("{}_ПРОВАЙДЕР_ПОЛУЧЕНИЕ_ЗА_ПЕРИОД_НАЧАЛО: " +
+                "период с {} по {}", ENTITY_NAME, startDate, endDate);
+
+        final List<VisitorLog> logs = visitorLogRepository.findAllByLogDateBetweenOrderByLogDateDesc(startDate, endDate);
+
+        log.info("{}_ПРОВАЙДЕР_ПОЛУЧЕНИЕ_ЗА_ПЕРИОД_УСПЕХ: " +
+                "получено {} записей за период {} - {}", logs.size(), startDate, endDate);
+
+        return logs;
+    }
 }

@@ -18,11 +18,11 @@ public class VisitorLogResponse {
     @Schema(description = "Идентификатор журнала посещений")
     private UUID id;
 
-    @Schema(description = "Список посетителей (полные данные)")
-    private List<UserInfoResponse> visitors;
-
     @Schema(description = "Количество посетителей")
-    private Integer visitorsCount;
+    private Integer visitorCount;
+
+    @Schema(description = "Сырые данные о посетителях")
+    private String rawData;
 
     @Schema(description = "Дата посещений")
     private LocalDate logDate;

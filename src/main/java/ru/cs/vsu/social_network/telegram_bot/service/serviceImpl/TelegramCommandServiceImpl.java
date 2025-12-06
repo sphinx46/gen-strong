@@ -8,18 +8,20 @@ import ru.cs.vsu.social_network.telegram_bot.dto.response.UserInfoResponse;
 import ru.cs.vsu.social_network.telegram_bot.dto.response.VisitResponse;
 import ru.cs.vsu.social_network.telegram_bot.dto.response.VisitorLogResponse;
 import ru.cs.vsu.social_network.telegram_bot.entity.enums.ROLE;
-import ru.cs.vsu.social_network.telegram_bot.provider.UserEntityProvider;
 import ru.cs.vsu.social_network.telegram_bot.service.ReportService;
 import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
 import ru.cs.vsu.social_network.telegram_bot.service.UserService;
 import ru.cs.vsu.social_network.telegram_bot.service.VisitService;
 import ru.cs.vsu.social_network.telegram_bot.utils.MessageConstants;
+import ru.cs.vsu.social_network.telegram_bot.utils.table.TableFormatterService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Реализация сервиса для обработки команд Telegram бота.
@@ -34,6 +36,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
     private final UserService userService;
     private final VisitService visitService;
     private final ReportService reportService;
+    private final TableFormatterService tableFormatterService;
 
     private static final DateTimeFormatter INPUT_DATE_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -42,10 +45,12 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
     public TelegramCommandServiceImpl(final UserService userService,
                                       final VisitService visitService,
-                                      final ReportService reportService) {
+                                      final ReportService reportService,
+                                      final TableFormatterService tableFormatterService) {
         this.userService = userService;
         this.visitService = visitService;
         this.reportService = reportService;
+        this.tableFormatterService = tableFormatterService;
     }
 
     /**
@@ -96,10 +101,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
             final String response = String.format(
                     "✅ *%s, вы успешно отмечены в зале!*\n\n" +
-                            "Время: %s\n" +
                             "Журнал за сегодня будет сформирован администратором.",
-                    user.getDisplayName() != null ? user.getDisplayName() : user.getFirstName(),
-                    visit.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm"))
+                    user.getDisplayName() != null ? user.getDisplayName() : user.getFirstName()
             );
 
             log.info("{}_КОМАНДА_В_ЗАЛЕ_УСПЕХ: пользователь {} отмечен в зале",
@@ -148,7 +151,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                             "*Доступные команды:*\n" +
                             "• /start - Начать работу с ботом\n" +
                             "• Я в зале - Отметиться в зале\n" +
-                            "• /report - Получить отчет (только для администраторов)",
+                            "• /help - Показать справку по командам",
                     displayName.trim()
             );
 
@@ -191,7 +194,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 } catch (DateTimeParseException e) {
                     return "❌ *Неверный формат даты!*\n" +
                             "Используйте формат: ДД.ММ.ГГГГ\n" +
-                            "Пример: 06.12.2025";
+                            "Пример: /report 06.12.2025";
                 }
             }
 
@@ -270,6 +273,49 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
      * {@inheritDoc}
      */
     @Override
+    public String handleTableCommand(final Long telegramId, final String input) {
+        log.info("{}_КОМАНДА_ТАБЛИЦА_НАЧАЛО: администратор {}, ввод: {}",
+                SERVICE_NAME, telegramId, input);
+
+        try {
+            final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+            if (user.getRole() != ROLE.ADMIN) {
+                log.warn("{}_КОМАНДА_ТАБЛИЦА_ДОСТУП_ЗАПРЕЩЕН: " +
+                        "пользователь {} не является администратором", SERVICE_NAME, telegramId);
+                return "❌ *Доступ запрещен!*\nЭта команда доступна только администраторам.";
+            }
+
+            if (input == null || input.trim().isEmpty()) {
+                log.info("{}_КОМАНДА_ТАБЛИЦА_ПОЛУЧЕНИЕ_ТЕКУЩЕГО_ДНЯ: " +
+                        "администратор {}", SERVICE_NAME, telegramId);
+                return getTableForToday(user.getId());
+            }
+
+            final String[] parts = input.trim().split("\\s+");
+
+            if (parts.length == 1) {
+                return getTableForDate(user.getId(), parts[0]);
+            } else if (parts.length == 2) {
+                return getTableForPeriod(user.getId(), parts[0], parts[1]);
+            } else {
+                log.warn("{}_КОМАНДА_ТАБЛИЦА_НЕВЕРНЫЙ_ФОРМАТ: " +
+                        "неверное количество параметров: {}", SERVICE_NAME, parts.length);
+                return tableFormatterService.getTableUsageInstructions();
+            }
+
+        } catch (Exception e) {
+            log.error("{}_КОМАНДА_ТАБЛИЦА_ОШИБКА: ошибка при обработке команды для {}: {}",
+                    SERVICE_NAME, telegramId, e.getMessage(), e);
+            return "❌ *Произошла ошибка при получении таблицы.*\n" +
+                    "Проверьте формат даты и попробуйте еще раз.";
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String handleUnknownCommand(final Long telegramId) {
         log.debug("{}_НЕИЗВЕСТНАЯ_КОМАНДА: Telegram ID {}",
                 SERVICE_NAME, telegramId);
@@ -295,9 +341,14 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
             if (user.getRole() == ROLE.ADMIN) {
                 response.append("\n*Команды администратора:*\n");
-                response.append("• /report [дата] - Отчет за день\n");
+                response.append("• /report - Отчет посещений за сегодня\n");
+                response.append("• /report [дата] - Отчет за определенный день\n");
+                response.append("  Пример: /report 06.12.2025\n");
                 response.append("• /report_period [начало] [конец] - Отчет за период\n");
-                response.append("• /users - Список пользователей\n");
+                response.append("  Пример: /report_period 01.12.2025 06.12.2025\n");
+                response.append("• /help - Показать эту справку\n");
+            } else {
+                response.append("• /help - Показать справку по командам\n");
             }
 
             response.append("\nИспользуйте кнопки меню или введите команду вручную.");
@@ -307,6 +358,86 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         } catch (Exception e) {
             return "👋 *Добро пожаловать в тренажерный зал!*\n\n" +
                     "Для начала работы введите команду /start";
+        }
+    }
+
+    /**
+     * Возвращает таблицу посещений за текущий день.
+     *
+     * @param adminUserId идентификатор администратора
+     * @return форматированная таблица посещений за сегодня
+     */
+    private String getTableForToday(final UUID adminUserId) {
+        log.info("{}_ТАБЛИЦА_ЗА_ТЕКУЩИЙ_ДЕНЬ_НАЧАЛО: администратор {}",
+                SERVICE_NAME, adminUserId);
+
+        final LocalDate today = LocalDate.now();
+        final Optional<VisitorLogResponse> existingLog = reportService.getVisitorLogByDate(adminUserId, today);
+
+        return tableFormatterService.formatTableForToday(adminUserId.toString(), existingLog);
+    }
+
+    /**
+     * Возвращает таблицу посещений за указанную дату.
+     *
+     * @param adminUserId идентификатор администратора
+     * @param dateStr строка с датой в формате ДД.ММ.ГГГГ
+     * @return форматированная таблица посещений за указанную дату
+     */
+    private String getTableForDate(final UUID adminUserId, final String dateStr) {
+        log.info("{}_ТАБЛИЦА_ЗА_ДАТУ_НАЧАЛО: администратор {}, дата: {}",
+                SERVICE_NAME, adminUserId, dateStr);
+
+        try {
+            final LocalDate date = LocalDate.parse(dateStr.trim(), INPUT_DATE_FORMATTER);
+            final Optional<VisitorLogResponse> existingLog = reportService.getVisitorLogByDate(adminUserId, date);
+
+            return tableFormatterService.formatTableForDate(adminUserId.toString(), date, existingLog);
+        } catch (DateTimeParseException e) {
+            log.warn("{}_ТАБЛИЦА_ЗА_ДАТУ_НЕВЕРНЫЙ_ФОРМАТ: неверный формат даты: {}",
+                    SERVICE_NAME, dateStr);
+            return "❌ *Неверный формат даты!*\n" +
+                    "Используйте формат: ДД.ММ.ГГГГ\n" +
+                    "Пример: /report 06.12.2025";
+        }
+    }
+
+    /**
+     * Возвращает таблицу посещений за указанный период.
+     *
+     * @param adminUserId идентификатор администратора
+     * @param startDateStr строка с начальной датой в формате ДД.ММ.ГГГГ
+     * @param endDateStr строка с конечной датой в формате ДД.ММ.ГГГГ
+     * @return форматированная таблица посещений за указанный период
+     */
+    private String getTableForPeriod(final UUID adminUserId, final String startDateStr, final String endDateStr) {
+        log.info("{}_ТАБЛИЦА_ЗА_ПЕРИОД_НАЧАЛО: администратор {}, период: {} - {}",
+                SERVICE_NAME, adminUserId, startDateStr, endDateStr);
+
+        try {
+            final LocalDate startDate = LocalDate.parse(startDateStr.trim(), INPUT_DATE_FORMATTER);
+            final LocalDate endDate = LocalDate.parse(endDateStr.trim(), INPUT_DATE_FORMATTER);
+
+            if (startDate.isAfter(endDate)) {
+                log.warn("{}_ТАБЛИЦА_ЗА_ПЕРИОД_НЕВЕРНЫЕ_ДАТЫ: " +
+                        "дата начала {} позже даты окончания {}", SERVICE_NAME, startDate, endDate);
+                return "❌ *Дата начала не может быть позже даты окончания!*";
+            }
+
+            final var logs = reportService.getVisitorLogsByPeriod(adminUserId, startDate, endDate);
+
+            if (logs.isEmpty()) {
+                return tableFormatterService.formatPeriodTableEmpty(startDate, endDate);
+            }
+
+            return tableFormatterService.formatTableForPeriod(startDate, endDate, logs);
+
+        } catch (DateTimeParseException e) {
+            log.warn("{}_ТАБЛИЦА_ЗА_ПЕРИОД_НЕВЕРНЫЙ_ФОРМАТ: неверный формат дат: {} - {}",
+                    SERVICE_NAME, startDateStr, endDateStr);
+            return "❌ *Неверный формат даты!*\n" +
+                    "Используйте формат: ДД.ММ.ГГГГ ДД.ММ.ГГГГ\n" +
+                    "Пример: /report_period 01.12.2025 06.12.2025";
         }
     }
 }

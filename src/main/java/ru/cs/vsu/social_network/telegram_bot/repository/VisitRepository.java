@@ -89,7 +89,7 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
      * @param endDate конечная дата (включительно)
      * @return список посещений
      */
-    @Query("SELECT v FROM Visit v WHERE DATE(v.visitDate) BETWEEN :startDate AND :endDate ORDER BY v.visitDate")
+    @Query("SELECT v FROM Visit v JOIN FETCH v.user WHERE DATE(v.visitDate) BETWEEN :startDate AND :endDate ORDER BY v.visitDate")
     List<Visit> findAllByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     /**

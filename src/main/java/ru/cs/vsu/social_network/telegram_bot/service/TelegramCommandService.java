@@ -60,6 +60,16 @@ public interface TelegramCommandService {
     String handlePeriodReportCommand(Long telegramId, String startDateStr, String endDateStr);
 
     /**
+     * Обрабатывает команду "Получить таблицу" (журнал посещений).
+     * Позволяет администратору получить таблицу за текущий день, определенную дату или период.
+     *
+     * @param telegramId идентификатор администратора в Telegram
+     * @param input параметры команды (может быть пустым, датой или двумя датами)
+     * @return форматированная таблица посещений
+     */
+    String handleTableCommand(Long telegramId, String input);
+
+    /**
      * Обрабатывает неизвестную команду или сообщение.
      * Предоставляет пользователю информацию о доступных командах.
      *

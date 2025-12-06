@@ -91,7 +91,15 @@ public class ReportStatisticsServiceImpl implements ReportStatisticsService {
                 SERVICE_NAME, date, dailyVisits.size());
 
         List<String> visitorNames = dailyVisits.stream()
-                .map(visit -> visit.getUser().getDisplayName())
+                .map(visit -> {
+                    try {
+                        return visit.getUser() != null ? visit.getUser().getDisplayName() : null;
+                    } catch (Exception e) {
+                        log.warn("{}_СОЗДАНИЕ_СТАТИСТИКИ_ОШИБКА_ПОЛУЧЕНИЯ_ИМЕНИ: ошибка при получении имени пользователя",
+                                SERVICE_NAME);
+                        return null;
+                    }
+                })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 

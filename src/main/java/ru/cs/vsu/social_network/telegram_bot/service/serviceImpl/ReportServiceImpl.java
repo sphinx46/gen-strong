@@ -1,6 +1,10 @@
 package ru.cs.vsu.social_network.telegram_bot.service.serviceImpl;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.cs.vsu.social_network.telegram_bot.dto.response.DailyStatsResponse;
@@ -203,6 +207,110 @@ public class ReportServiceImpl implements ReportService {
                 "получено {} журналов", SERVICE_NAME, responses.size());
 
         return responses;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<VisitorLogResponse> getVisitorLogByDate(final UUID adminUserId, final LocalDate date) {
+        log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛА_ПО_ДАТЕ_НАЧАЛО: " +
+                "администратор {}, дата: {}", SERVICE_NAME, adminUserId, date);
+
+        visitorLogValidator.validateAdminAccessForLogs(adminUserId);
+
+        final Optional<VisitorLog> visitorLog = visitorLogEntityProvider.findByLogDate(date);
+
+        if (visitorLog.isPresent()) {
+            log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛА_ПО_ДАТЕ_УСПЕХ: " +
+                    "журнал за дату {} найден", SERVICE_NAME, date);
+            final VisitorLogResponse response = entityMapper.map(visitorLog.get(), VisitorLogResponse.class);
+            return Optional.of(response);
+        } else {
+            log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛА_ПО_ДАТЕ_НЕ_НАЙДЕН: " +
+                    "журнал за дату {} не найден", SERVICE_NAME, date);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<VisitorLogResponse> getVisitorLogsByPeriod(final UUID adminUserId,
+                                                           final LocalDate startDate,
+                                                           final LocalDate endDate) {
+        log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛОВ_ЗА_ПЕРИОД_НАЧАЛО: " +
+                "администратор {}, период: {} - {}", SERVICE_NAME, adminUserId, startDate, endDate);
+
+        visitorLogValidator.validateAdminAccessForLogs(adminUserId);
+
+        final List<VisitorLog> logs = visitorLogEntityProvider.findByPeriod(startDate, endDate);
+        final List<VisitorLogResponse> responses = entityMapper.mapList(logs, VisitorLogResponse.class);
+
+        log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛОВ_ЗА_ПЕРИОД_УСПЕХ: " +
+                "получено {} журналов", SERVICE_NAME, responses.size());
+
+        return responses;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public VisitorLogResponse getVisitorLogById(final UUID adminUserId, final UUID logId) {
+        log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛА_ПО_ID_НАЧАЛО: " +
+                "администратор {}, ID журнала: {}", SERVICE_NAME, adminUserId, logId);
+
+        visitorLogValidator.validateAdminAccessForLogs(adminUserId);
+
+        final VisitorLog visitorLog = visitorLogEntityProvider.getById(logId);
+        final VisitorLogResponse response = entityMapper.map(visitorLog, VisitorLogResponse.class);
+
+        log.info("{}_ПОЛУЧЕНИЕ_ЖУРНАЛА_ПО_ID_УСПЕХ: " +
+                "журнал с ID {} найден", SERVICE_NAME, logId);
+
+        return response;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<VisitorLogResponse> getAllVisitorLogsPaginated(final UUID adminUserId,
+                                                               final int page,
+                                                               final int size) {
+        log.info("{}_ПОЛУЧЕНИЕ_ВСЕХ_ЖУРНАЛОВ_С_ПАГИНАЦИЕЙ_НАЧАЛО: " +
+                "администратор {}, страница: {}, размер: {}", SERVICE_NAME, adminUserId, page, size);
+
+        visitorLogValidator.validateAdminAccessForLogs(adminUserId);
+
+        final Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "logDate"));
+        final Page<VisitorLog> logsPage = visitorLogRepository.findAll(pageable);
+        final List<VisitorLogResponse> responses = entityMapper.mapList(logsPage.getContent(), VisitorLogResponse.class);
+
+        log.info("{}_ПОЛУЧЕНИЕ_ВСЕХ_ЖУРНАЛОВ_С_ПАГИНАЦИЕЙ_УСПЕХ: " +
+                "получено {} журналов на странице {}", SERVICE_NAME, responses.size(), page);
+
+        return responses;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getTotalVisitorLogsCount(final UUID adminUserId) {
+        log.debug("{}_ПОЛУЧЕНИЕ_ОБЩЕГО_КОЛИЧЕСТВА_ЖУРНАЛОВ_НАЧАЛО: администратор {}",
+                SERVICE_NAME, adminUserId);
+
+        visitorLogValidator.validateAdminAccessForLogs(adminUserId);
+
+        final long count = visitorLogRepository.count();
+
+        log.debug("{}_ПОЛУЧЕНИЕ_ОБЩЕГО_КОЛИЧЕСТВА_ЖУРНАЛОВ_УСПЕХ: всего журналов: {}",
+                SERVICE_NAME, count);
+
+        return count;
     }
 
     /**

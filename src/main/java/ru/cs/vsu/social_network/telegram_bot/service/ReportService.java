@@ -6,6 +6,7 @@ import ru.cs.vsu.social_network.telegram_bot.dto.response.VisitorLogResponse;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -74,4 +75,54 @@ public interface ReportService {
      * @return список журналов посещений
      */
     List<VisitorLogResponse> getRecentVisitorLogs(UUID adminUserId, int days);
+
+    /**
+     * Получает журнал посещений за указанную дату.
+     * Если журнал не существует, возвращает пустой Optional.
+     *
+     * @param adminUserId идентификатор администратора, запрашивающего журнал
+     * @param date дата для получения журнала
+     * @return Optional с журналом посещений, если существует
+     */
+    Optional<VisitorLogResponse> getVisitorLogByDate(UUID adminUserId, LocalDate date);
+
+    /**
+     * Получает журналы посещений за указанный период.
+     * Возвращает все журналы в указанном диапазоне дат.
+     *
+     * @param adminUserId идентификатор администратора, запрашивающего журналы
+     * @param startDate начальная дата периода
+     * @param endDate конечная дата периода
+     * @return список журналов посещений за период
+     */
+    List<VisitorLogResponse> getVisitorLogsByPeriod(UUID adminUserId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Получает журнал посещений по его идентификатору.
+     * Используется для получения конкретной записи журнала.
+     *
+     * @param adminUserId идентификатор администратора
+     * @param logId идентификатор журнала посещений
+     * @return DTO журнала посещений
+     */
+    VisitorLogResponse getVisitorLogById(UUID adminUserId, UUID logId);
+
+    /**
+     * Получает все журналы посещений с пагинацией.
+     * Используется для административного интерфейса с большим количеством записей.
+     *
+     * @param adminUserId идентификатор администратора
+     * @param page номер страницы (начиная с 0)
+     * @param size количество записей на странице
+     * @return список журналов посещений для указанной страницы
+     */
+    List<VisitorLogResponse> getAllVisitorLogsPaginated(UUID adminUserId, int page, int size);
+
+    /**
+     * Получает общее количество записей в журнале посещений.
+     *
+     * @param adminUserId идентификатор администратора
+     * @return общее количество записей
+     */
+    long getTotalVisitorLogsCount(UUID adminUserId);
 }

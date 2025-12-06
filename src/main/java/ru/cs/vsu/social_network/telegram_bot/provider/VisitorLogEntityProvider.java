@@ -45,4 +45,13 @@ public interface VisitorLogEntityProvider extends EntityProvider<VisitorLog> {
      * @return список последних записей журнала
      */
     List<VisitorLog> findLatest(int limit);
+
+    /**
+     * Находит все записи журнала за указанный период.
+     *
+     * @param startDate начальная дата периода
+     * @param endDate конечная дата периода
+     * @return список записей журнала за период
+     */
+    List<VisitorLog> findByPeriod(LocalDate startDate, LocalDate endDate);
 }

@@ -1,0 +1,33 @@
+package ru.cs.vsu.social_network.telegram_bot.dto.request;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.*;
+import ru.cs.vsu.social_network.telegram_bot.entity.enums.ROLE;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@Schema(description = "Запрос на создание пользователя")
+public class UserCreateRequest {
+    @Schema(description = "Идентификатор пользователя в телеграм")
+    private Long telegramId;
+
+    @Schema(description = "Никнейм пользователя")
+    private String username;
+
+    @Schema(description = "Имя пользователя")
+    private String firstName;
+
+    @Schema(description = "Фамилия пользователя")
+    private String lastName;
+
+    @Schema(description = "Никнейм для отображения в боте")
+    private String displayName;
+
+    @Schema(description = "Роль пользователя (по умолчанию USER)")
+    private ROLE role = ROLE.USER;
+}
+
+

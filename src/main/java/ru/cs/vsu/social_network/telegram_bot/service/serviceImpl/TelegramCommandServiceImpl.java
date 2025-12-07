@@ -456,7 +456,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
         if ("awaiting_display_name".equals(userState)) {
             return "Пожалуйста, введите имя для обращения. " +
-                    "Пример: *Иван* или *Спортсмен123*";
+                    "Пример: *Сергей Мордвинов*";
         }
 
         if (adminState != null) {
@@ -499,7 +499,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 response.append("  Пример: /report period 01.12.2025 06.12.2025\n");
                 response.append("• /table - Таблица посещений за сегодня\n");
                 response.append("• /table дата - Таблица за определенный день\n");
-                response.append("• /table дата_нач дата_кон - Таблица за период\n");
+                response.append("• /table дата-начало дата-конец - Таблица за период\n");
             }
 
             response.append("\n*Общие команды:*\n");

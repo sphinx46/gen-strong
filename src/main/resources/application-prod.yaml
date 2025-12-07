@@ -16,6 +16,8 @@ spring:
       max-lifetime: 1800000
       pool-name: GymBotHikariPool
       leak-detection-threshold: 60000
+      auto-commit: false
+      transaction-isolation: TRANSACTION_READ_COMMITTED
 
   jpa:
     hibernate:
@@ -29,6 +31,9 @@ spring:
         jdbc:
           batch_size: 10
         default_batch_fetch_size: 10
+        transaction:
+          jta:
+            platform: org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform
 
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
@@ -39,10 +44,9 @@ spring:
     out-of-order: ${FLYWAY_OUT_OF_ORDER:true}
     baseline-version: 0
 
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=12h
+  transaction:
+    default-timeout: 30
+    rollback-on-commit-failure: true
 
 telegram:
   bot:
@@ -91,6 +95,7 @@ logging:
     org.flywaydb.core: INFO
     com.zaxxer.hikari: INFO
     org.springframework.jdbc: WARN
+    org.springframework.transaction: DEBUG
 
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"

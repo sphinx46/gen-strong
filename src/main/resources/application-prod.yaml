@@ -4,25 +4,34 @@ spring:
       on-profile: prod
 
   datasource:
-    url: ${DATABASE_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/railway}}
-    username: ${PGUSER:${SPRING_DATASOURCE_USERNAME:postgres}}
-    password: ${PGPASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/railway}?sslmode=require&connectTimeout=30&socketTimeout=60
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      connection-timeout: 10000
+      connection-timeout: 30000
       maximum-pool-size: 2
       minimum-idle: 1
       idle-timeout: 60000
+      max-lifetime: 300000
       auto-commit: false
+      connection-test-query: SELECT 1
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        connection:
+          provider_disables_autocommit: true
 
   flyway:
     enabled: true
     locations: classpath:db/migrations
+    baseline-on-migrate: true
+    validate-on-migrate: false
 
 telegram:
   bot:
@@ -40,7 +49,12 @@ app:
 
 server:
   port: ${PORT:8080}
+  shutdown: graceful
 
 logging:
   level:
-    root: ERROR
+    root: WARN
+    ru.cs.vsu.social_network.telegram_bot: INFO
+    org.telegram: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: INFO

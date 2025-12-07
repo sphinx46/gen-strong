@@ -19,7 +19,4 @@ public class MessageConstants {
     // ROLE
     public final static String ADMIN_ACCESS_REQUIRED = "Ошибка! Пользователь не является администратором";
     public final static String ROLE_ACCESS_REQUIRED = "Ошибка! Пользователь не имеет требуемую роль";
-
-
-
 }

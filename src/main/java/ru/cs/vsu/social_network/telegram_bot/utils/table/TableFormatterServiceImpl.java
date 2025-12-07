@@ -79,7 +79,14 @@ public class TableFormatterServiceImpl implements TableFormatterService {
         log.info("{}_ФОРМАТИРОВАНИЕ_ТАБЛИЦЫ_ЗА_ПЕРИОД_НАЧАЛО: период {} - {}, журналов: {}",
                 SERVICE_NAME, startDate, endDate, logs.size());
 
-        final StringBuilder table = new StringBuilder();
+        if (logs.isEmpty()) {
+            log.info("{}_ФОРМАТИРОВАНИЕ_ТАБЛИЦЫ_ЗА_ПЕРИОД_ПУСТО: возвращаем пустую таблицу",
+                    SERVICE_NAME);
+            return formatPeriodTableEmpty(startDate, endDate);
+        }
+
+
+            final StringBuilder table = new StringBuilder();
 
         final String startDateStr = formatDate(startDate);
         final String endDateStr = formatDate(endDate);

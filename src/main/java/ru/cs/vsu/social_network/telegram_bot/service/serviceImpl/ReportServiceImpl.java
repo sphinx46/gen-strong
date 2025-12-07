@@ -331,7 +331,7 @@ public class ReportServiceImpl implements ReportService {
      * @param date дата для генерации журнала
      * @return DTO сохраненного журнала посещений
      */
-    private VisitorLogResponse generateAndSaveVisitorLog(final LocalDate date) {
+    public VisitorLogResponse generateAndSaveVisitorLog(final LocalDate date) {
         log.debug("{}_ГЕНЕРАЦИЯ_ЖУРНАЛА_ДЛЯ_ДАТЫ_НАЧАЛО: дата: {}", SERVICE_NAME, date);
 
         final List<Visit> visits = visitEntityProvider.findAllWithUsersByDate(date);

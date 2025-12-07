@@ -77,4 +77,24 @@ public interface TelegramCommandService {
      * @return сообщение со списком доступных команд
      */
     String handleUnknownCommand(Long telegramId);
+
+    /**
+     * Обрабатывает команды из админ-меню при нажатии на кнопки.
+     * Управляет состояниями администратора для сбора данных для отчетов.
+     *
+     * @param telegramId идентификатор администратора в Telegram
+     * @param menuCommand текст команды из меню
+     * @return ответное сообщение или запрос дополнительных данных
+     */
+    String handleAdminMenuCommand(Long telegramId, String menuCommand);
+
+    /**
+     * Обрабатывает ввод даты администратором.
+     * Используется после выбора опций в меню для сбора дат для отчетов.
+     *
+     * @param telegramId идентификатор администратора в Telegram
+     * @param dateInput введенная дата или специальное значение
+     * @return сформированный отчет или следующий запрос данных
+     */
+    String handleAdminDateInput(Long telegramId, String dateInput);
 }

@@ -42,6 +42,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
             DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final Map<Long, String> userStates = new HashMap<>();
+    private final Map<Long, String> adminStates = new HashMap<>();
 
     public TelegramCommandServiceImpl(final UserService userService,
                                       final VisitService visitService,
@@ -190,16 +191,25 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 date = LocalDate.now();
             } else {
                 try {
-                    date = LocalDate.parse(dateStr.trim(), INPUT_DATE_FORMATTER);
+                    if ("сегодня".equalsIgnoreCase(dateStr.trim())) {
+                        date = LocalDate.now();
+                    } else if ("вчера".equalsIgnoreCase(dateStr.trim())) {
+                        date = LocalDate.now().minusDays(1);
+                    } else {
+                        date = LocalDate.parse(dateStr.trim(), INPUT_DATE_FORMATTER);
+                    }
                 } catch (DateTimeParseException e) {
                     return "❌ *Неверный формат даты!*\n" +
                             "Используйте формат: ДД.ММ.ГГГГ\n" +
-                            "Пример: /report 06.12.2025";
+                            "Пример: /report 06.12.2025\n" +
+                            "Или специальные значения: 'сегодня', 'вчера'";
                 }
             }
 
             final VisitorLogResponse report = reportService.generateDailyReportForDate(
                     user.getId(), date);
+
+            adminStates.remove(telegramId);
 
             log.info("{}_КОМАНДА_ОТЧЕТ_ЗА_ДЕНЬ_УСПЕХ: " +
                             "отчет за {} сгенерирован для администратора {}",
@@ -253,6 +263,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
             final ReportResponse report = reportService.generatePeriodReport(
                     user.getId(), startDate, endDate);
+
+            adminStates.remove(telegramId);
 
             log.info("{}_КОМАНДА_ОТЧЕТ_ЗА_ПЕРИОД_УСПЕХ: " +
                             "отчет за период {} - {} сгенерирован",
@@ -316,15 +328,125 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
      * {@inheritDoc}
      */
     @Override
+    public String handleAdminMenuCommand(final Long telegramId, final String menuCommand) {
+        log.info("{}_КОМАНДА_АДМИН_МЕНЮ_НАЧАЛО: администратор {}, команда меню: {}",
+                SERVICE_NAME, telegramId, menuCommand);
+
+        try {
+            final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+            if (user.getRole() != ROLE.ADMIN) {
+                return "❌ *Доступ запрещен!*\nЭта команда доступна только администраторам.";
+            }
+
+            if ("Получить журнал за сегодня".equals(menuCommand)) {
+                return handleDailyReportCommand(telegramId, null);
+            } else if (menuCommand.startsWith("Получить журнал за день")) {
+                String datePart = menuCommand.replace("Получить журнал за день", "").trim();
+                if (datePart.isEmpty()) {
+                    adminStates.put(telegramId, "awaiting_specific_date");
+                    return "📅 *Выберите дату для отчета*\n\n" +
+                            "Введите дату в формате ДД.ММ.ГГГГ\n" +
+                            "Пример: 06.12.2025\n\n" +
+                            "Или используйте специальные значения:\n" +
+                            "• сегодня\n" +
+                            "• вчера";
+                } else {
+                    return handleDailyReportCommand(telegramId, datePart);
+                }
+            } else if ("Получить журнал за период".equals(menuCommand)) {
+                adminStates.put(telegramId, "awaiting_start_date");
+                return "📅 *Выберите период для отчета*\n\n" +
+                        "Введите *начальную дату* в формате ДД.ММ.ГГГГ\n" +
+                        "Пример: 01.12.2025";
+            }
+
+            return handleUnknownCommand(telegramId);
+
+        } catch (Exception e) {
+            log.error("{}_КОМАНДА_АДМИН_МЕНЮ_ОШИБКА: ошибка для {}: {}",
+                    SERVICE_NAME, telegramId, e.getMessage());
+            return "❌ *Произошла ошибка при обработке команды меню.*";
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String handleAdminDateInput(final Long telegramId, final String dateInput) {
+        log.info("{}_ВВОД_ДАТЫ_АДМИН_НАЧАЛО: администратор {}, ввод: {}",
+                SERVICE_NAME, telegramId, dateInput);
+
+        final String state = adminStates.get(telegramId);
+        if (state == null) {
+            return handleUnknownCommand(telegramId);
+        }
+
+        try {
+            if ("awaiting_specific_date".equals(state)) {
+                adminStates.remove(telegramId);
+                return handleDailyReportCommand(telegramId, dateInput);
+            } else if ("awaiting_start_date".equals(state)) {
+                try {
+                    LocalDate.parse(dateInput.trim(), INPUT_DATE_FORMATTER);
+                    adminStates.put(telegramId, "awaiting_end_date_" + dateInput);
+                    return "📅 *Теперь введите конечную дату* в формате ДД.ММ.ГГГГ\n" +
+                            "Пример: 06.12.2025";
+                } catch (DateTimeParseException e) {
+                    return "❌ *Неверный формат даты!*\n" +
+                            "Используйте формат: ДД.ММ.ГГГГ\n" +
+                            "Пример: 01.12.2025";
+                }
+            } else if (state.startsWith("awaiting_end_date_")) {
+                final String startDateStr = state.substring("awaiting_end_date_".length());
+                adminStates.remove(telegramId);
+                return handlePeriodReportCommand(telegramId, startDateStr, dateInput);
+            }
+
+            return handleUnknownCommand(telegramId);
+
+        } catch (Exception e) {
+            log.error("{}_ВВОД_ДАТЫ_АДМИН_ОШИБКА: ошибка для {}: {}",
+                    SERVICE_NAME, telegramId, e.getMessage());
+            return "❌ *Произошла ошибка при обработке даты.*\n" +
+                    "Проверьте формат и попробуйте еще раз.";
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String handleUnknownCommand(final Long telegramId) {
         log.debug("{}_НЕИЗВЕСТНАЯ_КОМАНДА: Telegram ID {}",
                 SERVICE_NAME, telegramId);
 
         final String userState = userStates.get(telegramId);
+        final String adminState = adminStates.get(telegramId);
 
         if ("awaiting_display_name".equals(userState)) {
             return "Пожалуйста, введите имя для обращения. " +
                     "Пример: *Иван* или *Спортсмен123*";
+        }
+
+        if (adminState != null) {
+            if ("awaiting_specific_date".equals(adminState)) {
+                return "📅 *Ожидается ввод даты*\n\n" +
+                        "Введите дату в формате ДД.ММ.ГГГГ\n" +
+                        "Пример: 06.12.2025\n\n" +
+                        "Или используйте специальные значения:\n" +
+                        "• сегодня\n" +
+                        "• вчера";
+            } else if ("awaiting_start_date".equals(adminState)) {
+                return "📅 *Ожидается ввод начальной даты*\n\n" +
+                        "Введите дату в формате ДД.ММ.ГГГГ\n" +
+                        "Пример: 01.12.2025";
+            } else if (adminState.startsWith("awaiting_end_date_")) {
+                return "📅 *Ожидается ввод конечной даты*\n\n" +
+                        "Введите дату в формате ДД.ММ.ГГГГ\n" +
+                        "Пример: 06.12.2025";
+            }
         }
 
         try {
@@ -405,9 +527,9 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
     /**
      * Возвращает таблицу посещений за указанный период.
      *
-     * @param adminUserId идентификатор администратора
+     * @param adminUserId  идентификатор администратора
      * @param startDateStr строка с начальной датой в формате ДД.ММ.ГГГГ
-     * @param endDateStr строка с конечной датой в формате ДД.ММ.ГГГГ
+     * @param endDateStr   строка с конечной датой в формате ДД.ММ.ГГГГ
      * @return форматированная таблица посещений за указанный период
      */
     private String getTableForPeriod(final UUID adminUserId, final String startDateStr, final String endDateStr) {

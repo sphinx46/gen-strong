@@ -17,6 +17,7 @@ import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +32,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
     private static final String BOT_NAME = "GYM_TELEGRAM_BOT";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final DateTimeFormatter INPUT_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final BotConfig botConfig;
     private final TelegramCommandService telegramCommandService;
@@ -108,6 +110,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обрабатывает входящее текстовое сообщение и определяет его тип.
+     * Определяет, является ли сообщение командой, текстом кнопки меню или вводом данных.
      *
      * @param telegramId Telegram ID пользователя
      * @param chatId ID чата
@@ -124,8 +127,32 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return processCommand(telegramId, text, message);
         } else if ("Я в зале".equalsIgnoreCase(text)) {
             return telegramCommandService.handleInGymCommand(telegramId);
+        } else if (text.startsWith("Получить журнал")) {
+            return telegramCommandService.handleAdminMenuCommand(telegramId, text);
+        } else if (isDateInput(text)) {
+            return telegramCommandService.handleAdminDateInput(telegramId, text);
         } else {
             return telegramCommandService.handleDisplayNameInput(telegramId, text);
+        }
+    }
+
+    /**
+     * Проверяет, является ли текст валидной датой.
+     * Поддерживает форматы: ДД.ММ.ГГГГ, а также специальные значения "сегодня" и "вчера".
+     *
+     * @param текст для проверки
+     * @return true, если текст является валидной датой или специальным значением
+     */
+    private boolean isDateInput(String text) {
+        try {
+            if ("сегодня".equalsIgnoreCase(text.trim()) ||
+                    "вчера".equalsIgnoreCase(text.trim())) {
+                return true;
+            }
+            LocalDate.parse(text.trim(), INPUT_DATE_FORMATTER);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
         }
     }
 
@@ -330,7 +357,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
     /**
      * Определяет, нужно ли добавлять меню к ответу.
-     * Меню не добавляется при определенных типах сообщений.
+     * Меню не добавляется при определенных типах сообщений,
+     * таких как запросы ввода данных или сообщения об ошибках.
      *
      * @param telegramId Telegram ID пользователя
      * @param responseText текст ответа
@@ -339,12 +367,15 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     private boolean shouldAddMenu(final Long telegramId, final String responseText) {
         return !responseText.contains("Как мне к вам обращаться") &&
                 !responseText.contains("Пожалуйста, введите имя") &&
+                !responseText.contains("📅 *Выберите") &&
+                !responseText.contains("📅 *Ожидается") &&
                 !responseText.startsWith("❌");
     }
 
     /**
      * Создает основное меню с кнопками.
      * Для администраторов добавляются дополнительные кнопки отчетов.
+     * Кнопки меню настроены для запуска соответствующих команд через сервис.
      *
      * @param telegramId Telegram ID пользователя для определения роли
      * @return клавиатура с меню
@@ -369,7 +400,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 keyboard.add(adminRow1);
 
                 final KeyboardRow adminRow2 = new KeyboardRow();
-                adminRow2.add(new KeyboardButton("Получить журнал за день " + getCurrentDateFormatted()));
+                adminRow2.add(new KeyboardButton("Получить журнал за день"));
                 keyboard.add(adminRow2);
 
                 final KeyboardRow adminRow3 = new KeyboardRow();
@@ -477,4 +508,3 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 BOT_NAME, getBotUsername());
     }
 }
-

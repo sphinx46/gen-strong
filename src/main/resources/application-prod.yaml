@@ -4,28 +4,39 @@ spring:
       on-profile: prod
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/railway}}?sslmode=require
-    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:postgres}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:}}
+    url: ${DATABASE_URL}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
-      maximum-pool-size: 2
+      maximum-pool-size: 3
       minimum-idle: 1
       idle-timeout: 60000
       max-lifetime: 300000
       auto-commit: false
+      connection-test-query: SELECT 1
 
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 5
+          fetch_size: 10
+        connection:
+          provider_disables_autocommit: true
 
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
     locations: classpath:db/migrations
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     validate-on-migrate: false
+    out-of-order: true
+    placeholder-replacement: false
 
 telegram:
   bot:
@@ -33,7 +44,7 @@ telegram:
     username: ${TELEGRAM_BOT_USERNAME}
     name: ${TELEGRAM_BOT_NAME}
     long-polling:
-      timeout: 10
+      timeout: 30
       limit: 20
       max-threads: 2
 
@@ -43,3 +54,23 @@ app:
 
 server:
   port: ${PORT:8080}
+  shutdown: graceful
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: false

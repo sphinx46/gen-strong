@@ -365,15 +365,15 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             final String response = telegramCommandService.handleUnknownCommand(telegramId);
             if (response.contains("Команды администратора")) {
                 final KeyboardRow adminRow1 = new KeyboardRow();
-                adminRow1.add(new KeyboardButton("/report (сегодня)"));
+                adminRow1.add(new KeyboardButton("Получить журнал за сегодня"));
                 keyboard.add(adminRow1);
 
                 final KeyboardRow adminRow2 = new KeyboardRow();
-                adminRow2.add(new KeyboardButton("/report " + getCurrentDateFormatted()));
+                adminRow2.add(new KeyboardButton("Получить журнал за день " + getCurrentDateFormatted()));
                 keyboard.add(adminRow2);
 
                 final KeyboardRow adminRow3 = new KeyboardRow();
-                adminRow3.add(new KeyboardButton("/report period"));
+                adminRow3.add(new KeyboardButton("Получить журнал за период"));
                 keyboard.add(adminRow3);
 
                 final KeyboardRow helpRow = new KeyboardRow();

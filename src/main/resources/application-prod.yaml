@@ -4,9 +4,9 @@ spring:
       on-profile: prod
 
   datasource:
-    url: jdbc:${DATABASE_URL:postgresql://localhost:5432/railway}
-    username: ${PGUSER:postgres}
-    password: ${PGPASSWORD:}
+    url: jdbc:postgresql://${DB_HOST:postgres.railway.internal}:${DB_PORT:5432}/${DB_NAME:railway}?sslmode=require
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:VylKAXPfuMfMUNevYPZtgTDMPXKnvnPQ}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
@@ -29,9 +29,9 @@ spring:
 
 telegram:
   bot:
-    token: ${TELEGRAM_BOT_TOKEN}
-    username: ${TELEGRAM_BOT_USERNAME}
-    name: ${TELEGRAM_BOT_NAME}
+    token: ${TELEGRAM_BOT_TOKEN:8375214694:AAFHRwB2TTT_yn5X1ccLatg1K_sfsyRPjCA}
+    username: ${TELEGRAM_BOT_USERNAME:gen_strong_bot}
+    name: ${TELEGRAM_BOT_NAME:Gen Strong Bot}
     long-polling:
       timeout: 10
       limit: 20

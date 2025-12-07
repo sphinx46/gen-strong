@@ -8,4 +8,4 @@ LABEL maintainer="sphinx46"
 WORKDIR /app
 COPY --from=builder /workspace/target/*.jar app.jar
 EXPOSE ${PORT:-8081}
-ENTRYPOINT ["java", "-Dserver.port=${PORT:-8081}", "-Dspring.profiles.active=${APP_PROFILE:-dev}", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-Dserver.port=${PORT:-8081}", "-jar", "/app/app.jar"]

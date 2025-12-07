@@ -76,7 +76,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
         final String response = String.format(
                 "👋 Привет, %s! Добро пожаловать в \"Поколение сильных!\"\n\n" +
-                        "Как мне к вам обращаться? (Введите ваше имя или никнейм)",
+                        "Как мне к вам обращаться? (Введите ваше имя и фамилию)",
                 user.getFirstName() != null ? user.getFirstName() : "друг"
         );
 

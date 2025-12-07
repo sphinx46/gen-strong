@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  telegram-postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: telegram-postgres-exporter
+    depends_on:
+      telegram-postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@telegram-postgres:5432/${DB_NAME:-gymbot_dev}?sslmode=disable"
+    ports:
+      - "9189:9187"
+    networks:
+      - telegram-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: telegram-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.size=1GB'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - telegram-network
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: telegram-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_FEATURE_TOGGLES_ENABLE: "publicDashboards"
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    networks:
+      - telegram-network
+
+volumes:
+  prometheus_data:
+  grafana_data:

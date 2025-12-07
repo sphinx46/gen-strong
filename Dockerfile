@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-alpine AS builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /workspace
 COPY . .
 RUN ./mvnw clean package -DskipTests || mvn clean package -DskipTests

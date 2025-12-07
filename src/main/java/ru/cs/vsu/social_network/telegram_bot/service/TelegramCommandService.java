@@ -106,4 +106,13 @@ public interface TelegramCommandService {
      * @return запрос на ввод нового имени
      */
     String handleChangeNameCommand(Long telegramId);
+
+    /**
+     * Обрабатывает команду /help.
+     * Возвращает справку по доступным командам в зависимости от роли пользователя.
+     *
+     * @param telegramId Telegram ID пользователя
+     * @return текст справки
+     */
+    String handleHelpCommand(Long telegramId);
 }

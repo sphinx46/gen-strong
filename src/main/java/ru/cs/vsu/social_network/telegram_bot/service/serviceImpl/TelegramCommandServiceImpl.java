@@ -78,7 +78,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         final String response = String.format(
                 "👋 Привет, %s! Добро пожаловать в \"Поколение сильных!\"\n\n" +
                         "Как мне к вам обращаться? (Введите ваше имя и фамилию)\n" +
-                        "Пример: *Иван* или *Спортсмен123*",
+                        "Пример: *Сергей Мордвиновс*",
                 user.getFirstName() != null ? user.getFirstName() : "друг"
         );
 
@@ -447,6 +447,60 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
      * {@inheritDoc}
      */
     @Override
+    public String handleHelpCommand(final Long telegramId) {
+        log.info("{}_КОМАНДА_HELP_НАЧАЛО: обработка команды /help для Telegram ID: {}",
+                SERVICE_NAME, telegramId);
+
+        try {
+            final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+            final String displayName = user.getDisplayName() != null ?
+                    user.getDisplayName() : user.getFirstName();
+
+            final StringBuilder response = new StringBuilder();
+            response.append(String.format("ℹ️ *%s, вот справка по командам:*\n\n", displayName));
+            response.append("*Основные команды:*\n");
+            response.append("• /start - Начать работу с ботом\n");
+            response.append("• Я в зале - Отметиться в тренажерном зале\n");
+            response.append("• Сменить имя - Изменить имя для обращения\n");
+            response.append("• /help - Показать эту справку\n");
+
+            if (user.getRole() == ROLE.ADMIN) {
+                response.append("\n*Команды администратора:*\n");
+                response.append("• /report - Отчет посещений за сегодня\n");
+                response.append("• /report дата - Отчет за определенный день\n");
+                response.append("  Пример: /report 06.12.2025\n");
+                response.append("• /report period начало конец - Отчет за период\n");
+                response.append("  Пример: /report period 01.12.2025 06.12.2025\n");
+                response.append("• /table - Таблица посещений за сегодня\n");
+                response.append("• /table дата - Таблица за определенный день\n");
+                response.append("• /table дата-начало дата-конец - Таблица за период\n");
+                response.append("\n*Кнопки меню администратора:*\n");
+                response.append("• Получить журнал за сегодня\n");
+                response.append("• Получить журнал за день\n");
+                response.append("• Получить журнал за период\n");
+            }
+
+            response.append("\nИспользуйте кнопки меню или введите команду вручную.");
+
+            log.info("{}_КОМАНДА_HELP_УСПЕХ: справка отправлена пользователю {}",
+                    SERVICE_NAME, telegramId);
+
+            return response.toString();
+
+        } catch (Exception e) {
+            log.error("{}_КОМАНДА_HELP_ОШИБКА: ошибка при обработке команды /help для {}: {}",
+                    SERVICE_NAME, telegramId, e.getMessage());
+
+            return "👋 *Добро пожаловать в тренажерный зал!*\n\n" +
+                    "Для начала работы введите команду /start";
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String handleUnknownCommand(final Long telegramId) {
         log.debug("{}_НЕИЗВЕСТНАЯ_КОМАНДА: Telegram ID {}",
                 SERVICE_NAME, telegramId);
@@ -486,9 +540,11 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
             final StringBuilder response = new StringBuilder();
             response.append(String.format("🤔 *%s, я не понял вашу команду.*\n\n", displayName));
-            response.append("*Доступные команды:*\n");
+            response.append("*Основные команды:*\n");
+            response.append("• /start - Начать работу с ботом\n");
             response.append("• Я в зале - Отметиться в тренажерном зале\n");
             response.append("• Сменить имя - Изменить имя для обращения\n");
+            response.append("• /help - Показать справку по командам\n");
 
             if (user.getRole() == ROLE.ADMIN) {
                 response.append("\n*Команды администратора:*\n");
@@ -500,11 +556,11 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 response.append("• /table - Таблица посещений за сегодня\n");
                 response.append("• /table дата - Таблица за определенный день\n");
                 response.append("• /table дата-начало дата-конец - Таблица за период\n");
+                response.append("\n*Кнопки меню администратора:*\n");
+                response.append("• Получить журнал за сегодня\n");
+                response.append("• Получить журнал за день\n");
+                response.append("• Получить журнал за период\n");
             }
-
-            response.append("\n*Общие команды:*\n");
-            response.append("• /start - Начать работу с ботом\n");
-            response.append("• /help - Показать эту справку\n");
 
             response.append("\nИспользуйте кнопки меню или введите команду вручную.");
 

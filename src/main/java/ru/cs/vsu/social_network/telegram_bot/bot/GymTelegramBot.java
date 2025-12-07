@@ -217,7 +217,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 return handleTableCommand(telegramId, parts);
 
             case "/help":
-                return telegramCommandService.handleUnknownCommand(telegramId);
+                return telegramCommandService.handleHelpCommand(telegramId);
 
             default:
                 log.warn("{}_КОМАНДА_НЕИЗВЕСТНАЯ: неизвестная команда '{}' от {}",

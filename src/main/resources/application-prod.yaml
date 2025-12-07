@@ -9,27 +9,20 @@ spring:
     password: ${PGPASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     hikari:
-      connection-timeout: 30000
-      maximum-pool-size: 3
+      connection-timeout: 10000
+      maximum-pool-size: 2
       minimum-idle: 1
-      idle-timeout: 300000
-      max-lifetime: 900000
+      idle-timeout: 60000
       auto-commit: false
 
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: false
     open-in-view: false
 
   flyway:
     enabled: true
     locations: classpath:db/migrations
-    baseline-on-migrate: true
-    validate-on-migrate: false
-
-  transaction:
-    default-timeout: 30
 
 telegram:
   bot:
@@ -37,9 +30,9 @@ telegram:
     username: ${TELEGRAM_BOT_USERNAME}
     name: ${TELEGRAM_BOT_NAME}
     long-polling:
-      timeout: 30
-      limit: 30
-      max-threads: 3
+      timeout: 10
+      limit: 20
+      max-threads: 2
 
 app:
   security:
@@ -47,21 +40,9 @@ app:
 
 server:
   port: ${PORT:8080}
-  shutdown: graceful
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-      base-path: /actuator
 
 logging:
   level:
-    root: WARN
-    ru.cs.vsu.social_network.telegram_bot: INFO
+    root: ERROR
 
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"
-
-JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Djava.awt.headless=true"
+JAVA_TOOL_OPTIONS: "-Xms64m -Xmx128m -XX:MaxMetaspaceSize=64m -XX:+UseSerialGC -Djava.awt.headless=true"

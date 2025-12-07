@@ -1,11 +1,11 @@
-FROM eclipse-temurin:21-jdk-jammy AS builder
+FROM eclipse-temurin:21-jre-alpine AS builder
 WORKDIR /workspace
 COPY . .
 RUN ./mvnw clean package -DskipTests || mvn clean package -DskipTests
 
-FROM eclipse-temurin:21-jdk-jammy
+FROM eclipse-temurin:21-jre-alpine
 LABEL maintainer="sphinx46"
 WORKDIR /app
 COPY --from=builder /workspace/target/*.jar app.jar
-EXPOSE ${PORT:-8081}
-ENTRYPOINT ["java", "-Dserver.port=${PORT:-8081}", "-jar", "/app/app.jar"]
+EXPOSE ${PORT:-8080}
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

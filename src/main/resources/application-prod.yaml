@@ -4,14 +4,14 @@ spring:
       on-profile: prod
 
   datasource:
-    url: ${DATABASE_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gymbot}}
+    url: ${DATABASE_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/railway}}
     username: ${PGUSER:${SPRING_DATASOURCE_USERNAME:postgres}}
     password: ${PGPASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 3
-      connection-timeout: 30000
+      connection-timeout: 60000
+      maximum-pool-size: 5
+      minimum-idle: 1
       idle-timeout: 600000
       max-lifetime: 1800000
       pool-name: GymBotHikariPool
@@ -19,13 +19,16 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: none
+    show-sql: false
+    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         connection:
           provider_disables_autocommit: true
+        jdbc:
+          batch_size: 10
+        default_batch_fetch_size: 10
 
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
@@ -33,11 +36,13 @@ spring:
     validate-on-migrate: false
     locations: ${FLYWAY_LOCATIONS:classpath:db/migrations}
     schemas: public
+    out-of-order: ${FLYWAY_OUT_OF_ORDER:true}
+    baseline-version: 0
 
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=2000,expireAfterWrite=24h
+      spec: maximumSize=1000,expireAfterWrite=12h
 
 telegram:
   bot:
@@ -45,38 +50,47 @@ telegram:
     username: ${TELEGRAM_BOT_USERNAME}
     name: ${TELEGRAM_BOT_NAME}
     long-polling:
-      timeout: 50
-      limit: 100
-      max-threads: 15
+      timeout: 30
+      limit: 50
+      max-threads: 5
     proxy:
       enabled: false
 
 app:
   security:
     admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:2056410944}
-    max-login-attempts: 10
+    max-login-attempts: 5
+
+  scheduler:
+    enabled: false
 
 server:
-  port: ${PORT:8081}
+  port: ${PORT:8080}
   shutdown: graceful
   compression:
     enabled: true
-    min-response-size: 2048
+    min-response-size: 1024
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
       base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:
-    ru.cs.vsu.social_network.telegram_bot: DEBUG
-    org.springframework: INFO
-    org.hibernate.SQL: DEBUG
-    org.flywaydb.core: DEBUG
-    com.zaxxer.hikari: DEBUG
+    root: INFO
+    ru.cs.vsu.social_network.telegram_bot: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+    org.telegram: INFO
+    org.flywaydb.core: INFO
+    com.zaxxer.hikari: INFO
+    org.springframework.jdbc: WARN
 
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"

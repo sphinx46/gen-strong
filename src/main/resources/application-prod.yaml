@@ -2,16 +2,15 @@ spring:
   config:
     activate:
       on-profile: prod
-    import: optional:file:.env.prod[.yaml]
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gymbot}}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gymbot}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: ${DB_MAX_POOL_SIZE:15}
-      minimum-idle: ${DB_MIN_IDLE:5}
+      maximum-pool-size: 10
+      minimum-idle: 3
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -20,11 +19,10 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         connection:
           provider_disables_autocommit: true
         jdbc:
@@ -37,19 +35,19 @@ spring:
         default_batch_fetch_size: 20
 
   flyway:
-    enabled: ${FLYWAY_ENABLED:true}
+    enabled: true
     locations: classpath:db/migrations
     baseline-on-migrate: true
-    validate-on-migrate: true
+    validate-on-migrate: false
     clean-disabled: true
-    table: flyway_schema_history_gymbot
     out-of-order: false
     baseline-version: 0
+    schemas: public
 
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=${CACHE_MAX_SIZE:2000},expireAfterWrite=${CACHE_TTL_HOURS:24}h
+      spec: maximumSize=2000,expireAfterWrite=24h
 
 telegram:
   bot:
@@ -57,18 +55,15 @@ telegram:
     username: ${TELEGRAM_BOT_USERNAME}
     name: ${TELEGRAM_BOT_NAME}
     long-polling:
-      timeout: ${TELEGRAM_POLLING_TIMEOUT:50}
-      limit: ${TELEGRAM_POLLING_LIMIT:100}
-      max-threads: ${TELEGRAM_POLLING_THREADS:15}
+      timeout: 50
+      limit: 100
+      max-threads: 15
     proxy:
-      enabled: ${TELEGRAM_PROXY_ENABLED:false}
-      host: ${TELEGRAM_PROXY_HOST:}
-      port: ${TELEGRAM_PROXY_PORT:}
-      type: ${TELEGRAM_PROXY_TYPE:SOCKS5}
+      enabled: false
 
 app:
   security:
-    admin-telegram-ids: ${ADMIN_TELEGRAM_IDS}
+    admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:2056410944}
     max-login-attempts: 10
 
   scheduler:
@@ -76,24 +71,19 @@ app:
     cleanup:
       enabled: true
       cron: "0 0 2 * * ?"
-      retention-days: ${DATA_RETENTION_DAYS:180}
+      retention-days: 180
     report:
       enabled: true
       cron: "0 0 20 * * ?"
-      admin-chat-id: ${ADMIN_CHAT_ID:}
+      admin-chat-id: ${ADMIN_CHAT_ID:2056410944}
 
   features:
     enable-notifications: true
-    enable-analytics: ${ENABLE_ANALYTICS:true}
+    enable-analytics: false
 
   monitoring:
     enabled: true
     metrics-prefix: gymbot.
-
-  backup:
-    enabled: ${BACKUP_ENABLED:true}
-    cron: "0 1 * * * ?"
-    retention-days: 7
 
 server:
   port: ${SERVER_PORT:8081}
@@ -132,28 +122,24 @@ management:
       prometheus:
         enabled: true
     tags:
-      application: ${spring.application.name}
+      application: telegram-gym-bot
       environment: prod
 
 logging:
   level:
-    ru.cs.vsu.social_network.telegram_bot: ${LOG_LEVEL:INFO}
+    ru.cs.vsu.social_network.telegram_bot: INFO
     org.springframework: WARN
     org.hibernate: WARN
     org.telegram: ERROR
+    org.flywaydb.core: DEBUG
 
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} [%X{traceId:-},%X{spanId:-}] - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} [traceId=%X{traceId:-},spanId=%X{spanId:-}] - %msg%n"
 
   file:
-    name: ${LOG_FILE_PATH:/var/log/gym-bot/application.log}
+    name: /var/log/gym-bot/application.log
     max-size: 100MB
     max-history: 30
     total-size-cap: 3GB
     clean-history-on-start: false
-
-  logstash:
-    enabled: ${LOGSTASH_ENABLED:false}
-    host: ${LOGSTASH_HOST:localhost}
-    port: ${LOGSTASH_PORT:5000}

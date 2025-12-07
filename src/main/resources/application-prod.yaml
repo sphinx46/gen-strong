@@ -4,9 +4,9 @@ spring:
       on-profile: prod
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gymbot}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    url: ${DATABASE_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gymbot}}
+    username: ${PGUSER:${SPRING_DATASOURCE_USERNAME:postgres}}
+    password: ${PGPASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -19,29 +19,19 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         connection:
           provider_disables_autocommit: true
-        jdbc:
-          batch_size: 25
-          fetch_size: 100
-        order_inserts: true
-        order_updates: true
-        query:
-          in_clause_parameter_padding: true
-        default_batch_fetch_size: 20
 
   flyway:
-    enabled: true
-    locations: classpath:db/migrations
-    baseline-on-migrate: true
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     validate-on-migrate: false
-    clean-disabled: true
-    out-of-order: false
-    baseline-version: 0
+    locations: ${FLYWAY_LOCATIONS:classpath:db/migrations}
     schemas: public
 
   cache:
@@ -66,34 +56,9 @@ app:
     admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:2056410944}
     max-login-attempts: 10
 
-  scheduler:
-    enabled: true
-    cleanup:
-      enabled: true
-      cron: "0 0 2 * * ?"
-      retention-days: 180
-    report:
-      enabled: true
-      cron: "0 0 20 * * ?"
-      admin-chat-id: ${ADMIN_CHAT_ID:2056410944}
-
-  features:
-    enable-notifications: true
-    enable-analytics: false
-
-  monitoring:
-    enabled: true
-    metrics-prefix: gymbot.
-
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${PORT:8081}
   shutdown: graceful
-  tomcat:
-    connection-timeout: 10000
-    max-connections: 10000
-    threads:
-      max: 200
-      min-spare: 10
   compression:
     enabled: true
     min-response-size: 2048
@@ -102,44 +67,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
-      base-path: /internal
-  endpoint:
-    health:
-      show-details: when-authorized
-      group:
-        liveness:
-          include: livenessState,ping
-        readiness:
-          include: readinessState,db
-    metrics:
-      enabled: true
-      export:
-        prometheus:
-          enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    tags:
-      application: telegram-gym-bot
-      environment: prod
+        include: health,info,metrics
+      base-path: /actuator
 
 logging:
   level:
-    ru.cs.vsu.social_network.telegram_bot: INFO
-    org.springframework: WARN
-    org.hibernate: WARN
-    org.telegram: ERROR
+    ru.cs.vsu.social_network.telegram_bot: DEBUG
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
     org.flywaydb.core: DEBUG
+    com.zaxxer.hikari: DEBUG
 
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} [%X{traceId:-},%X{spanId:-}] - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} [traceId=%X{traceId:-},spanId=%X{spanId:-}] - %msg%n"
-
-  file:
-    name: /var/log/gym-bot/application.log
-    max-size: 100MB
-    max-history: 30
-    total-size-cap: 3GB
-    clean-history-on-start: false
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"

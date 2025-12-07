@@ -9,44 +9,27 @@ spring:
     password: ${PGPASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     hikari:
-      connection-timeout: 60000
-      maximum-pool-size: 5
+      connection-timeout: 30000
+      maximum-pool-size: 3
       minimum-idle: 1
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      pool-name: GymBotHikariPool
-      leak-detection-threshold: 60000
+      idle-timeout: 300000
+      max-lifetime: 900000
       auto-commit: false
-      transaction-isolation: TRANSACTION_READ_COMMITTED
 
   jpa:
     hibernate:
       ddl-auto: none
     show-sql: false
     open-in-view: false
-    properties:
-      hibernate:
-        connection:
-          provider_disables_autocommit: true
-        jdbc:
-          batch_size: 10
-        default_batch_fetch_size: 10
-        transaction:
-          jta:
-            platform: org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform
 
   flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    enabled: true
+    locations: classpath:db/migrations
+    baseline-on-migrate: true
     validate-on-migrate: false
-    locations: ${FLYWAY_LOCATIONS:classpath:db/migrations}
-    schemas: public
-    out-of-order: ${FLYWAY_OUT_OF_ORDER:true}
-    baseline-version: 0
 
   transaction:
     default-timeout: 30
-    rollback-on-commit-failure: true
 
 telegram:
   bot:
@@ -55,47 +38,30 @@ telegram:
     name: ${TELEGRAM_BOT_NAME}
     long-polling:
       timeout: 30
-      limit: 50
-      max-threads: 5
-    proxy:
-      enabled: false
+      limit: 30
+      max-threads: 3
 
 app:
   security:
     admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:2056410944}
-    max-login-attempts: 5
-
-  scheduler:
-    enabled: false
 
 server:
   port: ${PORT:8080}
   shutdown: graceful
-  compression:
-    enabled: true
-    min-response-size: 1024
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
       base-path: /actuator
-  endpoint:
-    health:
-      show-details: always
 
 logging:
   level:
-    root: INFO
+    root: WARN
     ru.cs.vsu.social_network.telegram_bot: INFO
-    org.springframework: WARN
-    org.hibernate: WARN
-    org.telegram: INFO
-    org.flywaydb.core: INFO
-    com.zaxxer.hikari: INFO
-    org.springframework.jdbc: WARN
-    org.springframework.transaction: DEBUG
 
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"
+
+JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Djava.awt.headless=true"

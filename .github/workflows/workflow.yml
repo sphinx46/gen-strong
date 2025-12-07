@@ -48,21 +48,6 @@ jobs:
         java-version: [21]
         service: [gym-telegram-bot]
 
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,12 +61,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          mvn -B clean test -DskipITs
-        env:
-          SPRING_PROFILES_ACTIVE: test
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test
-          SPRING_DATASOURCE_USERNAME: test
-          SPRING_DATASOURCE_PASSWORD: test
+          mvn -B clean test -Dspring.profiles.active=test
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

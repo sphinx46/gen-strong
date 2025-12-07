@@ -77,7 +77,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
         final String response = String.format(
                 "👋 Привет, %s! Добро пожаловать в \"Поколение сильных!\"\n\n" +
-                        "Как мне к вам обращаться? (Введите ваше имя и фамилию)",
+                        "Как мне к вам обращаться? (Введите ваше имя и фамилию)\n" +
+                        "Пример: *Иван* или *Спортсмен123*",
                 user.getFirstName() != null ? user.getFirstName() : "друг"
         );
 
@@ -133,40 +134,68 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         log.info("{}_ВВОД_ИМЕНИ_НАЧАЛО: обработка имени '{}' для Telegram ID: {}",
                 SERVICE_NAME, displayName, telegramId);
 
-        if (!"awaiting_display_name".equals(userStates.get(telegramId))) {
+        final String userState = userStates.get(telegramId);
+
+        if ("awaiting_display_name".equals(userState)) {
+            try {
+                final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+                userService.updateDisplayName(user.getId(), displayName.trim());
+
+                userStates.remove(telegramId);
+
+                final String response = String.format(
+                        "✅ *Отлично, %s!*\n\n" +
+                                "Теперь я буду обращаться к вам так.\n\n" +
+                                "*Доступные команды:*\n" +
+                                "• Я в зале - Отметиться в зале\n" +
+                                "• Сменить имя - Изменить имя для обращения\n" +
+                                "• /help - Показать справку по командам",
+                        displayName.trim()
+                );
+
+                log.info("{}_ВВОД_ИМЕНИ_УСПЕХ: имя пользователя {} обновлено на '{}'",
+                        SERVICE_NAME, telegramId, displayName);
+
+                return response;
+
+            } catch (Exception e) {
+                log.error("{}_ВВОД_ИМЕНИ_ОШИБКА: ошибка при обновлении имени для {}: {}",
+                        SERVICE_NAME, telegramId, e.getMessage());
+
+                return "❌ *Произошла ошибка при сохранении имени.*\n" +
+                        "Пожалуйста, попробуйте еще раз.";
+            }
+        } else if ("awaiting_new_display_name".equals(userState)) {
+            try {
+                final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+                userService.updateDisplayName(user.getId(), displayName.trim());
+
+                userStates.remove(telegramId);
+
+                final String response = String.format(
+                        "✅ *Имя успешно изменено!*\n\n" +
+                                "Теперь я буду обращаться к вам как *%s*.",
+                        displayName.trim()
+                );
+
+                log.info("{}_СМЕНА_ИМЕНИ_УСПЕХ: имя пользователя {} изменено на '{}'",
+                        SERVICE_NAME, telegramId, displayName);
+
+                return response;
+
+            } catch (Exception e) {
+                log.error("{}_СМЕНА_ИМЕНИ_ОШИБКА: ошибка при изменении имени для {}: {}",
+                        SERVICE_NAME, telegramId, e.getMessage());
+
+                return "❌ *Произошла ошибка при изменении имени.*\n" +
+                        "Пожалуйста, попробуйте еще раз.";
+            }
+        } else {
             log.warn("{}_ВВОД_ИМЕНИ_НЕОЖИДАННО: Telegram ID {} не ожидает ввода имени",
                     SERVICE_NAME, telegramId);
             return handleUnknownCommand(telegramId);
-        }
-
-        try {
-            final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
-
-            userService.updateDisplayName(user.getId(), displayName.trim());
-
-            userStates.remove(telegramId);
-
-            final String response = String.format(
-                    "✅ *Отлично, %s!*\n\n" +
-                            "Теперь я буду обращаться к вам так.\n\n" +
-                            "*Доступные команды:*\n" +
-                            "• /start - Начать работу с ботом\n" +
-                            "• Я в зале - Отметиться в зале\n" +
-                            "• /help - Показать справку по командам",
-                    displayName.trim()
-            );
-
-            log.info("{}_ВВОД_ИМЕНИ_УСПЕХ: имя пользователя {} обновлено на '{}'",
-                    SERVICE_NAME, telegramId, displayName);
-
-            return response;
-
-        } catch (Exception e) {
-            log.error("{}_ВВОД_ИМЕНИ_ОШИБКА: ошибка при обновлении имени для {}: {}",
-                    SERVICE_NAME, telegramId, e.getMessage());
-
-            return "❌ *Произошла ошибка при сохранении имени.*\n" +
-                    "Пожалуйста, попробуйте еще раз.";
         }
     }
 
@@ -458,20 +487,24 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
             final StringBuilder response = new StringBuilder();
             response.append(String.format("🤔 *%s, я не понял вашу команду.*\n\n", displayName));
             response.append("*Доступные команды:*\n");
-            response.append("• /start - Начать работу с ботом\n");
             response.append("• Я в зале - Отметиться в тренажерном зале\n");
+            response.append("• Сменить имя - Изменить имя для обращения\n");
 
             if (user.getRole() == ROLE.ADMIN) {
                 response.append("\n*Команды администратора:*\n");
                 response.append("• /report - Отчет посещений за сегодня\n");
-                response.append("• /report [дата] - Отчет за определенный день\n");
+                response.append("• /report дата - Отчет за определенный день\n");
                 response.append("  Пример: /report 06.12.2025\n");
-                response.append("• /report period [начало] [конец] - Отчет за период\n");
+                response.append("• /report period начало конец - Отчет за период\n");
                 response.append("  Пример: /report period 01.12.2025 06.12.2025\n");
-                response.append("• /help - Показать эту справку\n");
-            } else {
-                response.append("• /help - Показать справку по командам\n");
+                response.append("• /table - Таблица посещений за сегодня\n");
+                response.append("• /table дата - Таблица за определенный день\n");
+                response.append("• /table дата_нач дата_кон - Таблица за период\n");
             }
+
+            response.append("\n*Общие команды:*\n");
+            response.append("• /start - Начать работу с ботом\n");
+            response.append("• /help - Показать эту справку\n");
 
             response.append("\nИспользуйте кнопки меню или введите команду вручную.");
 
@@ -480,6 +513,44 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         } catch (Exception e) {
             return "👋 *Добро пожаловать в тренажерный зал!*\n\n" +
                     "Для начала работы введите команду /start";
+        }
+    }
+
+    /**
+     * Обрабатывает команду смены имени пользователя.
+     * Устанавливает состояние ожидания нового имени.
+     *
+     * @param telegramId Telegram ID пользователя
+     * @return запрос на ввод нового имени
+     */
+    @Override
+    public String handleChangeNameCommand(final Long telegramId) {
+        log.info("{}_КОМАНДА_СМЕНЫ_ИМЕНИ_НАЧАЛО: пользователь {} хочет сменить имя",
+                SERVICE_NAME, telegramId);
+
+        try {
+            final UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+            userStates.put(telegramId, "awaiting_new_display_name");
+
+            final String response = String.format(
+                    "✏️ *%s, вы хотите изменить имя для обращения.*\n\n" +
+                            "Пожалуйста, введите новое имя и фамилию.\n" +
+                            "Пример: *Сергей Мордвинов*",
+                    user.getDisplayName() != null ? user.getDisplayName() : user.getFirstName()
+            );
+
+            log.info("{}_КОМАНДА_СМЕНЫ_ИМЕНИ_УСПЕХ: пользователь {} ожидает ввода нового имени",
+                    SERVICE_NAME, telegramId);
+
+            return response;
+
+        } catch (Exception e) {
+            log.error("{}_КОМАНДА_СМЕНЫ_ИМЕНИ_ОШИБКА: ошибка для {}: {}",
+                    SERVICE_NAME, telegramId, e.getMessage());
+
+            return "❌ *Произошла ошибка при запросе смены имени.*\n" +
+                    "Пожалуйста, попробуйте позже.";
         }
     }
 
@@ -503,7 +574,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
      * Возвращает таблицу посещений за указанную дату.
      *
      * @param adminUserId идентификатор администратора
-     * @param dateStr строка с датой в формате ДД.ММ.ГГГГ
+     * @param dateStr     строка с датой в формате ДД.ММ.ГГГГ
      * @return форматированная таблица посещений за указанную дату
      */
     private String getTableForDate(final UUID adminUserId, final String dateStr) {

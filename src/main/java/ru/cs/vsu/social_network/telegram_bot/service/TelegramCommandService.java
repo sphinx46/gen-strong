@@ -97,4 +97,13 @@ public interface TelegramCommandService {
      * @return сформированный отчет или следующий запрос данных
      */
     String handleAdminDateInput(Long telegramId, String dateInput);
+
+    /**
+     * Обрабатывает команду "Сменить имя" от пользователя.
+     * Запрашивает новое имя для обращения к пользователю.
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return запрос на ввод нового имени
+     */
+    String handleChangeNameCommand(Long telegramId);
 }

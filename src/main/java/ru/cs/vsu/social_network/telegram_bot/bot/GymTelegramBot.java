@@ -127,6 +127,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return processCommand(telegramId, text, message);
         } else if ("Я в зале".equalsIgnoreCase(text)) {
             return telegramCommandService.handleInGymCommand(telegramId);
+        } else if ("Сменить имя".equalsIgnoreCase(text)) {
+            return telegramCommandService.handleChangeNameCommand(telegramId);
         } else if (text.startsWith("Получить журнал")) {
             return telegramCommandService.handleAdminMenuCommand(telegramId, text);
         } else if (isDateInput(text)) {
@@ -140,7 +142,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
      * Проверяет, является ли текст валидной датой.
      * Поддерживает форматы: ДД.ММ.ГГГГ, а также специальные значения "сегодня" и "вчера".
      *
-     * @param текст для проверки
+     * @param text текст для проверки
      * @return true, если текст является валидной датой или специальным значением
      */
     private boolean isDateInput(String text) {
@@ -390,6 +392,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
         final KeyboardRow row1 = new KeyboardRow();
         row1.add(new KeyboardButton("Я в зале"));
+        row1.add(new KeyboardButton("Сменить имя"));
         keyboard.add(row1);
 
         try {
@@ -406,18 +409,20 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 final KeyboardRow adminRow3 = new KeyboardRow();
                 adminRow3.add(new KeyboardButton("Получить журнал за период"));
                 keyboard.add(adminRow3);
-
-                final KeyboardRow helpRow = new KeyboardRow();
-                helpRow.add(new KeyboardButton("/help"));
-                keyboard.add(helpRow);
-            } else {
-                final KeyboardRow helpRow = new KeyboardRow();
-                helpRow.add(new KeyboardButton("/help"));
-                keyboard.add(helpRow);
             }
+
+            final KeyboardRow helpRow = new KeyboardRow();
+            helpRow.add(new KeyboardButton("/help"));
+            keyboard.add(helpRow);
+
         } catch (Exception e) {
             log.warn("{}_МЕНЮ_ОШИБКА: не удалось определить роль пользователя {}: {}",
                     BOT_NAME, telegramId, e.getMessage());
+
+            final KeyboardRow row2 = new KeyboardRow();
+            row2.add(new KeyboardButton("Я в зале"));
+            row2.add(new KeyboardButton("Сменить имя"));
+            keyboard.add(row2);
 
             final KeyboardRow helpRow = new KeyboardRow();
             helpRow.add(new KeyboardButton("/help"));

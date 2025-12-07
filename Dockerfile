@@ -1,10 +1,7 @@
 FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /workspace
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-COPY src src
-COPY db/migrations db/migrations
-RUN mvn clean package -DskipTests -Dspring.profiles.active=prod -Dmaven.test.skip=true
+COPY . .
+RUN mvn clean package -DskipTests -Dspring.profiles.active=prod
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

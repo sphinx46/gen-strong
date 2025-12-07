@@ -86,39 +86,6 @@ public class ReportStatisticsServiceImpl implements ReportStatisticsService {
      * {@inheritDoc}
      */
     @Override
-    public DailyStatsResponse createDailyStats(LocalDate date, List<Visit> dailyVisits) {
-        log.debug("{}_СОЗДАНИЕ_СТАТИСТИКИ_ЗА_ДЕНЬ_НАЧАЛО: дата: {}, посещений: {}",
-                SERVICE_NAME, date, dailyVisits.size());
-
-        List<String> visitorNames = dailyVisits.stream()
-                .map(visit -> {
-                    try {
-                        return visit.getUser() != null ? visit.getUser().getDisplayName() : null;
-                    } catch (Exception e) {
-                        log.warn("{}_СОЗДАНИЕ_СТАТИСТИКИ_ОШИБКА_ПОЛУЧЕНИЯ_ИМЕНИ: ошибка при получении имени пользователя",
-                                SERVICE_NAME);
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        DailyStatsResponse dailyStat = DailyStatsResponse.builder()
-                .date(date)
-                .visitorCount(visitorNames.size())
-                .visitorNames(visitorNames)
-                .build();
-
-        log.debug("{}_СОЗДАНИЕ_СТАТИСТИКИ_ЗА_ДЕНЬ_УСПЕХ: создана статистика за {}, посетителей: {}",
-                SERVICE_NAME, date, visitorNames.size());
-
-        return dailyStat;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public List<DailyStatsResponse> generateDailyStatsForPeriod(LocalDate startDate,
                                                                 LocalDate endDate,
                                                                 Map<LocalDate, List<Visit>> visitsByDate) {
@@ -139,5 +106,100 @@ public class ReportStatisticsServiceImpl implements ReportStatisticsService {
                 SERVICE_NAME, stats.size());
 
         return stats;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int countNewUsersForDate(LocalDate date, List<Visit> dailyVisits) {
+        log.debug("{}_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_НАЧАЛО: дата: {}, посещений: {}",
+                SERVICE_NAME, date, dailyVisits.size());
+
+        if (dailyVisits.isEmpty()) {
+            log.debug("{}_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_УСПЕХ: нет посещений, новых пользователей: 0",
+                    SERVICE_NAME);
+            return 0;
+        }
+        Set<UUID> uniqueUsers = new HashSet<>();
+
+        for (Visit visit : dailyVisits) {
+            UUID userId = visit.getUser().getId();
+            if (!uniqueUsers.contains(userId)) {
+                uniqueUsers.add(userId);
+            }
+        }
+
+        log.debug("{}_ПОДСЧЕТ_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ДЕНЬ_УСПЕХ: найдено {} уникальных пользователей",
+                SERVICE_NAME, uniqueUsers.size());
+
+        return uniqueUsers.size();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int countTotalNewUsersForPeriod(LocalDate startDate, LocalDate endDate,
+                                           Map<LocalDate, List<Visit>> visitsByDate) {
+        log.info("{}_ПОДСЧЕТ_ОБЩЕГО_КОЛИЧЕСТВА_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ПЕРИОД_НАЧАЛО: период {} - {}",
+                SERVICE_NAME, startDate, endDate);
+
+        Set<UUID> uniqueNewUsers = new HashSet<>();
+
+        for (Map.Entry<LocalDate, List<Visit>> entry : visitsByDate.entrySet()) {
+            LocalDate currentDate = entry.getKey();
+            List<Visit> dailyVisits = entry.getValue();
+
+            for (Visit visit : dailyVisits) {
+                UUID userId = visit.getUser().getId();
+                uniqueNewUsers.add(userId);
+            }
+        }
+
+        int totalNewUsers = uniqueNewUsers.size();
+
+        log.info("{}_ПОДСЧЕТ_ОБЩЕГО_КОЛИЧЕСТВА_НОВЫХ_ПОЛЬЗОВАТЕЛЕЙ_ЗА_ПЕРИОД_УСПЕХ: " +
+                "найдено {} новых пользователей за период", SERVICE_NAME, totalNewUsers);
+
+        return totalNewUsers;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DailyStatsResponse createDailyStats(LocalDate date, List<Visit> dailyVisits) {
+        log.debug("{}_СОЗДАНИЕ_СТАТИСТИКИ_ЗА_ДЕНЬ_НАЧАЛО: дата: {}, посещений: {}",
+                SERVICE_NAME, date, dailyVisits.size());
+
+        List<String> visitorNames = dailyVisits.stream()
+                .map(visit -> {
+                    try {
+                        return visit.getUser() != null ? visit.getUser().getDisplayName() : null;
+                    } catch (Exception e) {
+                        log.warn("{}_СОЗДАНИЕ_СТАТИСТИКИ_ОШИБКА_ПОЛУЧЕНИЯ_ИМЕНИ: " +
+                                        "ошибка при получении имени пользователя",
+                                SERVICE_NAME);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        int newUsersCount = countNewUsersForDate(date, dailyVisits);
+
+        DailyStatsResponse dailyStat = DailyStatsResponse.builder()
+                .date(date)
+                .visitorCount(visitorNames.size())
+                .visitorNames(visitorNames)
+                .newUsersCount(newUsersCount)
+                .build();
+
+        log.debug("{}_СОЗДАНИЕ_СТАТИСТИКИ_ЗА_ДЕНЬ_УСПЕХ: " +
+                        "создана статистика за {}, посетителей: {}, новых пользователей: {}",
+                SERVICE_NAME, date, visitorNames.size(), newUsersCount);
+
+        return dailyStat;
     }
 }

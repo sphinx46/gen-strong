@@ -57,14 +57,16 @@ public interface ReportService {
     List<DailyStatsResponse> generateDailyStats(UUID adminUserId, LocalDate startDate, LocalDate endDate);
 
     /**
-     * Форматирует текстовый отчет для Telegram на основе данных журнала посещений.
-     * Создает таблицу в формате, удобном для отображения в Telegram.
+     * Форматирует отчет для Telegram за указанную дату.
      *
      * @param date дата отчета
-     * @param visitorNames список имен посетителей
-     * @return форматированная строка для отправки в Telegram
+     * @param visitorNames список имен всех посетителей
+     * @param newUserNames список имен новых пользователей
+     * @return форматированный отчет для Telegram
      */
-    String formatTelegramReport(LocalDate date, List<String> visitorNames);
+    String formatTelegramReport(LocalDate date,
+                                List<String> visitorNames,
+                                List<String> newUserNames);
 
     /**
      * Получает журналы посещений за последние N дней.

@@ -89,11 +89,17 @@ public class TableFormatterServiceImpl implements TableFormatterService {
         table.append("📊 *Всего дней:* ").append(logs.size()).append("\n\n");
 
         int totalVisitors = 0;
+        int totalNewUsers = 0;
 
         for (final VisitorLogResponse logEntry : logs) {
             final String dateStr = formatDate(logEntry.getLogDate());
             table.append("• *").append(dateStr).append("*: ")
                     .append(logEntry.getVisitorCount()).append(" чел.");
+
+            if (logEntry.getNewUsersCount() != null && logEntry.getNewUsersCount() > 0) {
+                table.append(" (новых: ").append(logEntry.getNewUsersCount()).append(")");
+                totalNewUsers += logEntry.getNewUsersCount();
+            }
 
             if (logEntry.getVisitorCount() > 0) {
                 table.append(" (");
@@ -116,17 +122,20 @@ public class TableFormatterServiceImpl implements TableFormatterService {
 
         table.append("\n*Итоги:*\n");
         table.append("• Всего посетителей за период: ").append(totalVisitors).append("\n");
+        table.append("• Количество новых участников: ").append(totalNewUsers).append("\n");
         if (logs.size() > 0) {
             table.append("• Среднее в день: ")
                     .append(String.format("%.1f", (double) totalVisitors / logs.size()))
                     .append("\n");
         }
 
-        log.info("{}_ФОРМАТИРОВАНИЕ_ТАБЛИЦЫ_ЗА_ПЕРИОД_УСПЕХ: таблица сформирована",
-                SERVICE_NAME);
+        log.info("{}_ФОРМАТИРОВАНИЕ_ТАБЛИЦЫ_ЗА_ПЕРИОД_УСПЕХ: " +
+                        "таблица сформирована, новых пользователей: {}",
+                SERVICE_NAME, totalNewUsers);
 
         return table.toString();
     }
+
 
     /**
      * {@inheritDoc}

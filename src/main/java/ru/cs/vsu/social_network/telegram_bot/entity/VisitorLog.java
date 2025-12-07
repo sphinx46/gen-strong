@@ -28,4 +28,7 @@ public class VisitorLog extends BaseEntity {
 
     @Column(name = "log_date")
     private LocalDate logDate;
+
+    @Column(name = "new_users_count")
+    private Integer newUsersCount;
 }

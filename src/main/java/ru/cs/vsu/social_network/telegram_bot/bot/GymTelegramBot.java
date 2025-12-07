@@ -18,6 +18,7 @@ import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -141,6 +142,29 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                                   final String commandText,
                                   final Message message) {
 
+        log.debug("{}_КОМАНДА_ОБРАБОТКА_НАЧАЛО: текст команды '{}' от пользователя {}",
+                BOT_NAME, commandText, telegramId);
+
+        if (commandText.startsWith("/report period")) {
+            log.debug("{}_КОМАНДА_ОБРАБОТКА: команда /report period от пользователя {}",
+                    BOT_NAME, telegramId);
+
+            String periodParams = commandText.substring("/report period".length()).trim();
+            String[] dateParts = periodParams.split("\\s+");
+
+            String[] parts = new String[3];
+            parts[0] = "/report period";
+
+            if (dateParts.length >= 2) {
+                parts[1] = dateParts[0];
+                parts[2] = dateParts[1];
+            } else if (dateParts.length == 1) {
+                parts[1] = dateParts[0];
+            }
+
+            return handleReportPeriodCommand(telegramId, parts);
+        }
+
         final String[] parts;
         if (commandText.startsWith("/report") && commandText.contains("(сегодня)")) {
             parts = new String[] { "/report", null };
@@ -150,8 +174,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
         final String command = parts[0].toLowerCase();
 
-        log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}' от пользователя {}",
-                BOT_NAME, command, telegramId);
+        log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}' от пользователя {}, части: {}",
+                BOT_NAME, command, telegramId, Arrays.toString(parts));
 
         switch (command) {
             case "/start":
@@ -159,9 +183,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
             case "/report":
                 return handleReportCommand(telegramId, parts);
-
-            case "/report period":
-                return handleReportPeriodCommand(telegramId, parts);
 
             case "/table":
                 return handleTableCommand(telegramId, parts);
@@ -456,3 +477,4 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 BOT_NAME, getBotUsername());
     }
 }
+

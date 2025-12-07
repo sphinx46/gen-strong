@@ -14,30 +14,32 @@ public interface ReportFormatterService {
 
     /**
      * Форматирует ежедневный отчет для Telegram.
-     * Создает структурированное сообщение со списком посетителей за день.
      *
      * @param date дата отчета
-     * @param visitorNames список имен посетителей
-     * @return форматированная строка для отправки в Telegram
+     * @param visitorNames список всех посетителей
+     * @param newUserNames список новых пользователей
+     * @param newUsersCount количество новых пользователей
+     * @return форматированный отчет
      */
-    String formatDailyTelegramReport(LocalDate date, List<String> visitorNames);
+    String formatDailyTelegramReport(LocalDate date, List<String> visitorNames,
+                                     List<String> newUserNames, int newUsersCount);
 
     /**
      * Форматирует отчет за период для Telegram.
-     * Создает сводную статистику за период с детализацией по дням.
      *
      * @param startDate начальная дата периода
      * @param endDate конечная дата периода
      * @param dailyStats ежедневная статистика
      * @param totalVisits общее количество посещений
      * @param uniqueVisitors количество уникальных посетителей
+     * @param totalNewUsers общее количество новых пользователей за период
      * @param averageDailyVisits среднее количество посещений в день
-     * @return форматированная строка отчета
+     * @return форматированный отчет
      */
     String formatPeriodTelegramReport(LocalDate startDate, LocalDate endDate,
                                       Map<LocalDate, DailyStatsResponse> dailyStats,
                                       long totalVisits, long uniqueVisitors,
-                                      double averageDailyVisits);
+                                      long totalNewUsers, double averageDailyVisits);
 
     /**
      * Форматирует список посетителей в читаемый вид.

@@ -30,6 +30,9 @@ public class VisitorLogResponse {
     @Schema(description = "Форматированный отчет для отображения")
     private String formattedReport;
 
+    @Schema(description = "Количество новых пользователей")
+    private Integer newUsersCount;
+
     @Schema(description = "Время создания журнала")
     private LocalDateTime createdAt;
 

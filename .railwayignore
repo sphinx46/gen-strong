@@ -1,8 +1,0 @@
-*.md
-*.iml
-.idea/
-target/
-logs/
-*.log
-.DS_Store
-.git/

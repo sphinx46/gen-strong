@@ -49,6 +49,14 @@ public final class VisitorLogFactoryImpl implements VisitorLogFactory {
      */
     @Override
     public VisitorLog createWithData(Integer visitorCount, String rawData, LocalDate logDate) {
+        return createWithData(visitorCount, rawData, logDate, 0);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public VisitorLog createWithData(Integer visitorCount, String rawData, LocalDate logDate, int newUsersCount) {
         log.info("{}_ФАБРИКА_С_ДАННЫМИ: создание журнала, количество: {}, дата: {}",
                 ENTITY_NAME, visitorCount, logDate);
 
@@ -60,6 +68,8 @@ public final class VisitorLogFactoryImpl implements VisitorLogFactory {
                 .visitorCount(count)
                 .rawData(data)
                 .logDate(date)
+                .newUsersCount(newUsersCount)
+
                 .build();
 
         log.info("{}_ФАБРИКА_С_ДАННЫМИ: журнал создан", ENTITY_NAME);

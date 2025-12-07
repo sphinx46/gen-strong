@@ -1,0 +1,29 @@
+CREATE TABLE app_user (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    telegram_id BIGINT UNIQUE NOT NULL,
+    username VARCHAR(255),
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    display_name VARCHAR(255),
+    role VARCHAR(20) DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN')),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE visit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    visit_date TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE visitor_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    visitor_count INTEGER NOT NULL DEFAULT 0,
+    raw_data TEXT,
+    log_date DATE UNIQUE NOT NULL,
+    new_users_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

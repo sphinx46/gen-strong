@@ -13,7 +13,6 @@ services:
       POSTGRES_MAX_CONNECTIONS: 100
     volumes:
       - telegram_postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/databases/telegram:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432"
     deploy:
@@ -40,7 +39,7 @@ services:
       telegram-postgres:
         condition: service_healthy
     environment:
-      DATA_SOURCE_NAME: "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@telegram-postgres:5432/${DB_NAME:-gymbot}?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@telegram-postgres:5432/${DB_NAME:-gymbot_dev}?sslmode=disable"
     ports:
       - "9189:9187"
     deploy:
@@ -53,28 +52,6 @@ services:
           cpus: '0.05'
     healthcheck:
       test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9187/metrics" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - telegram-network
-
-  telegram-redis:
-    image: redis:7-alpine
-    container_name: telegram-redis
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000
-    ports:
-      - "6380:6379"
-    deploy:
-      resources:
-        limits:
-          memory: 384M
-          cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.25'
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,14 +81,13 @@ services:
       DB_HOST: telegram-postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-gymbot_dev}
-      SPRING_JPA_DDL_AUTO: update
-      SPRING_JPA_GENERATE_DDL: "true"
-      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: "false"
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_MAX_POOL_SIZE: ${DB_MAX_POOL_SIZE:-10}
       DB_MIN_IDLE: ${DB_MIN_IDLE:-2}
-      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-false}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
       APP_NAME: ${APP_NAME:-"Telegram Gym Bot"}
       APP_PROFILE: ${APP_PROFILE:-dev}
       SERVER_PORT: 8081
@@ -142,14 +118,16 @@ services:
       CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS:-GET,POST,PUT,DELETE,OPTIONS}
       CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-*}
       CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: true
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: false
+      SPRING_FLYWAY_OUT_OF_ORDER: true
+      SPRING_FLYWAY_BASELINE_VERSION: 0
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs/heapdump.hprof"
     volumes:
       - telegram_logs:/app/logs
       - telegram_data:/app/data
     depends_on:
       telegram-postgres:
-        condition: service_healthy
-      telegram-redis:
         condition: service_healthy
     deploy:
       resources:
@@ -164,7 +142,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s
     restart: unless-stopped
     networks:
       - telegram-network

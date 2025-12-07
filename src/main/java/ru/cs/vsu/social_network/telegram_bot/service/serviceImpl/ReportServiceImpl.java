@@ -113,6 +113,8 @@ public class ReportServiceImpl implements ReportService {
 
         final Map<LocalDate, List<Visit>> visitsByDate = reportStatisticsService.groupVisitsByDate(visits);
 
+        final int totalNewUsers = visitEntityProvider.countNewUsersByDateRange(startDate, endDate);
+
         final Map<LocalDate, DailyStatsResponse> dailyStats = new TreeMap<>();
         for (final Map.Entry<LocalDate, List<Visit>> entry : visitsByDate.entrySet()) {
             final LocalDate date = entry.getKey();
@@ -127,24 +129,22 @@ public class ReportServiceImpl implements ReportService {
 
         final String telegramReport = reportFormatterService.formatPeriodTelegramReport(
                 startDate, endDate, dailyStats,
-                totalVisits, uniqueVisitors, averageDailyVisits);
+                totalVisits, uniqueVisitors, totalNewUsers, averageDailyVisits);
 
-        final ReportResponse report = entityMapper.map(
-                ReportResponse.builder()
-                        .startDate(startDate)
-                        .endDate(endDate)
-                        .totalVisits((int) totalVisits)
-                        .uniqueVisitors((int) uniqueVisitors)
-                        .averageDailyVisits(averageDailyVisits)
-                        .dailyStats(dailyStats)
-                        .telegramFormattedReport(telegramReport)
-                        .build(),
-                ReportResponse.class
-        );
+        final ReportResponse report = ReportResponse.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .totalVisits((int) totalVisits)
+                .uniqueVisitors((int) uniqueVisitors)
+                .totalNewUsers(totalNewUsers)
+                .averageDailyVisits(averageDailyVisits)
+                .dailyStats(dailyStats)
+                .telegramFormattedReport(telegramReport)
+                .build();
 
         log.info("{}_ГЕНЕРАЦИЯ_ОТЧЕТА_ЗА_ПЕРИОД_УСПЕХ: " +
-                        "отчет за период {} - {} сгенерирован, всего посещений: {}",
-                SERVICE_NAME, startDate, endDate, totalVisits);
+                        "отчет за период {} - {} сгенерирован, всего посещений: {}, новых пользователей: {}",
+                SERVICE_NAME, startDate, endDate, totalVisits, totalNewUsers);
 
         return report;
     }
@@ -178,14 +178,20 @@ public class ReportServiceImpl implements ReportService {
      * {@inheritDoc}
      */
     @Override
-    public String formatTelegramReport(final LocalDate date, final List<String> visitorNames) {
+    public String formatTelegramReport(final LocalDate date,
+                                       final List<String> visitorNames,
+                                       final List<String> newUserNames) {
         log.debug("{}_ФОРМАТИРОВАНИЕ_ОТЧЕТА_ДЛЯ_TELEGRAM_НАЧАЛО: " +
-                "дата: {}, посетителей: {}", SERVICE_NAME, date, visitorNames.size());
+                "дата: {}, посетителей: {}, новых: {}", SERVICE_NAME, date, visitorNames.size(), newUserNames.size());
 
-        final String result = reportFormatterService.formatDailyTelegramReport(date, visitorNames);
+        final int newUsersCount = newUserNames != null ? newUserNames.size() : 0;
+
+        final String result = reportFormatterService.formatDailyTelegramReport(
+                date, visitorNames, newUserNames, newUsersCount);
 
         log.debug("{}_ФОРМАТИРОВАНИЕ_ОТЧЕТА_ДЛЯ_TELEGRAM_УСПЕХ: " +
-                "отчет сформирован, длина: {}", SERVICE_NAME, result.length());
+                        "отчет сформирован, длина: {}, новых пользователей: {}",
+                SERVICE_NAME, result.length(), newUsersCount);
 
         return result;
     }
@@ -319,7 +325,15 @@ public class ReportServiceImpl implements ReportService {
      * @param date дата для генерации журнала
      * @return DTO сохраненного журнала посещений
      */
+    /**
+     * Генерирует и сохраняет журнал посещений для указанной даты.
+     *
+     * @param date дата для генерации журнала
+     * @return DTO сохраненного журнала посещений
+     */
     private VisitorLogResponse generateAndSaveVisitorLog(final LocalDate date) {
+        log.debug("{}_ГЕНЕРАЦИЯ_ЖУРНАЛА_ДЛЯ_ДАТЫ_НАЧАЛО: дата: {}", SERVICE_NAME, date);
+
         final List<Visit> visits = visitEntityProvider.findAllWithUsersByDate(date);
 
         final List<String> visitorNames = visits.stream()
@@ -327,24 +341,37 @@ public class ReportServiceImpl implements ReportService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
+        final List<Visit> newUsersVisits = visitEntityProvider.findNewUsersByDate(date);
+
+        final List<String> newUserNames = newUsersVisits.stream()
+                .map(visit -> visit.getUser().getDisplayName())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
         final String rawData = String.join(", ", visitorNames);
+
+        final int newUsersCount = newUserNames.size();
+
+        log.debug("{}_ДАННЫЕ_ПОЛУЧЕНЫ: посетителей: {}, новых пользователей: {}, имена новых: {}",
+                SERVICE_NAME, visitorNames.size(), newUsersCount, newUserNames);
 
         VisitorLog visitorLog = visitorLogEntityProvider.findByLogDate(date)
                 .orElseGet(() -> visitorLogFactory.createWithData(
-                        visitorNames.size(), rawData, date));
+                        visitorNames.size(), rawData, date, newUsersCount));
 
         visitorLog.setVisitorCount(visitorNames.size());
         visitorLog.setRawData(rawData);
         visitorLog.setLogDate(date);
+        visitorLog.setNewUsersCount(newUsersCount);
 
         final VisitorLog savedLog = visitorLogRepository.save(visitorLog);
         final VisitorLogResponse response = entityMapper.map(savedLog, VisitorLogResponse.class);
 
-        response.setFormattedReport(formatTelegramReport(date, visitorNames));
+        response.setFormattedReport(formatTelegramReport(date, visitorNames, newUserNames));
 
         log.info("{}_СОХРАНЕНИЕ_ЖУРНАЛА_УСПЕХ: " +
-                        "журнал за дату {} сохранен, посетителей: {}",
-                SERVICE_NAME, date, visitorNames.size());
+                        "журнал за дату {} сохранен, посетителей: {}, новых пользователей: {}, имена новых: {}",
+                SERVICE_NAME, date, visitorNames.size(), newUsersCount, newUserNames);
 
         return response;
     }

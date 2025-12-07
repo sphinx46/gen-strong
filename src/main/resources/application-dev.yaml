@@ -54,7 +54,7 @@ spring:
       continue-on-error: true
 
   flyway:
-    enabled: false
+    enabled: true
 
   cache:
     type: simple

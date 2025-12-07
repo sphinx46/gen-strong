@@ -63,4 +63,26 @@ public interface ReportStatisticsService {
     List<DailyStatsResponse> generateDailyStatsForPeriod(LocalDate startDate,
                                                          LocalDate endDate,
                                                          Map<LocalDate, List<Visit>> visitsByDate);
+
+
+    /**
+     * Подсчитывает количество новых пользователей за указанный день.
+     * Новым считается пользователь, у которого это первое посещение.
+     *
+     * @param date дата для подсчета
+     * @param dailyVisits список посещений за день
+     * @return количество новых пользователей
+     */
+    int countNewUsersForDate(LocalDate date, List<Visit> dailyVisits);
+
+    /**
+     * Подсчитывает общее количество новых пользователей за период.
+     *
+     * @param startDate начальная дата
+     * @param endDate конечная дата
+     * @param visitsByDate сгруппированные по датам посещения
+     * @return общее количество новых пользователей за период
+     */
+    int countTotalNewUsersForPeriod(LocalDate startDate, LocalDate endDate,
+                                    Map<LocalDate, List<Visit>> visitsByDate);
 }

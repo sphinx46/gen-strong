@@ -25,41 +25,12 @@ public class ReportFormatterServiceImpl implements ReportFormatterService {
      * {@inheritDoc}
      */
     @Override
-    public String formatDailyTelegramReport(LocalDate date, List<String> visitorNames) {
-        log.debug("{}_ФОРМАТИРОВАНИЕ_ЕЖЕДНЕВНОГО_ОТЧЕТА_НАЧАЛО: дата: {}, посетителей: {}",
-                SERVICE_NAME, date, visitorNames.size());
-
-        StringBuilder report = new StringBuilder();
-        String formattedDate = formatDate(date);
-
-        report.append("📊 *Журнал посещений тренажерного зала*\n");
-        report.append("📅 *Дата:* ").append(formattedDate).append("\n");
-        report.append("👥 *Посетители:* ").append(visitorNames.size()).append("\n\n");
-
-        if (visitorNames.isEmpty()) {
-            report.append("❌ *В этот день посетителей не было*");
-        } else {
-            report.append("*Список посетителей:*\n");
-            report.append(formatVisitorList(visitorNames));
-        }
-
-        String result = report.toString();
-        log.debug("{}_ФОРМАТИРОВАНИЕ_ЕЖЕДНЕВНОГО_ОТЧЕТА_УСПЕХ: отчет сформирован, длина: {}",
-                SERVICE_NAME, result.length());
-
-        return result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public String formatPeriodTelegramReport(LocalDate startDate, LocalDate endDate,
                                              Map<LocalDate, DailyStatsResponse> dailyStats,
                                              long totalVisits, long uniqueVisitors,
-                                             double averageDailyVisits) {
-        log.debug("{}_ФОРМАТИРОВАНИЕ_ОТЧЕТА_ЗА_ПЕРИОД_НАЧАЛО: период {} - {}",
-                SERVICE_NAME, startDate, endDate);
+                                             long totalNewUsers, double averageDailyVisits) {
+        log.debug("{}_ФОРМАТИРОВАНИЕ_ОТЧЕТА_ЗА_ПЕРИОД_НАЧАЛО: период {} - {}, новых пользователей: {}",
+                SERVICE_NAME, startDate, endDate, totalNewUsers);
 
         StringBuilder report = new StringBuilder();
 
@@ -72,6 +43,7 @@ public class ReportFormatterServiceImpl implements ReportFormatterService {
         report.append("*Общая статистика:*\n");
         report.append("• Всего посещений: ").append(totalVisits).append("\n");
         report.append("• Уникальных посетителей: ").append(uniqueVisitors).append("\n");
+        report.append("• Количество новых участников: ").append(totalNewUsers).append("\n");
         report.append("• Среднее в день: ").append(String.format("%.1f", averageDailyVisits)).append("\n\n");
 
         report.append("*Ежедневная посещаемость:*\n");
@@ -81,32 +53,18 @@ public class ReportFormatterServiceImpl implements ReportFormatterService {
 
             String dateStr = formatDate(date);
             report.append("• ").append(dateStr).append(": ")
-                    .append(stat.getVisitorCount()).append(" чел.\n");
+                    .append(stat.getVisitorCount()).append(" чел.");
+
+            if (stat.getNewUsersCount() > 0) {
+                report.append(" (новых: ").append(stat.getNewUsersCount()).append(")");
+            }
+            report.append("\n");
         }
 
         String result = report.toString();
-        log.debug("{}_ФОРМАТИРОВАНИЕ_ОТЧЕТА_ЗА_ПЕРИОД_УСПЕХ: отчет сформирован, длина: {}",
-                SERVICE_NAME, result.length());
-
-        return result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String formatVisitorList(List<String> visitorNames) {
-        log.debug("{}_ФОРМАТИРОВАНИЕ_СПИСКА_ПОСЕТИТЕЛЕЙ_НАЧАЛО: посетителей: {}",
-                SERVICE_NAME, visitorNames.size());
-
-        StringBuilder list = new StringBuilder();
-        for (int i = 0; i < visitorNames.size(); i++) {
-            list.append(i + 1).append(". ").append(visitorNames.get(i)).append("\n");
-        }
-
-        String result = list.toString();
-        log.debug("{}_ФОРМАТИРОВАНИЕ_СПИСКА_ПОСЕТИТЕЛЕЙ_УСПЕХ: список сформирован",
-                SERVICE_NAME);
+        log.debug("{}_ФОРМАТИРОВАНИЕ_ОТЧЕТА_ЗА_ПЕРИОД_УСПЕХ: " +
+                        "отчет сформирован, длина: {}, новых пользователей: {}",
+                SERVICE_NAME, result.length(), totalNewUsers);
 
         return result;
     }
@@ -126,5 +84,99 @@ public class ReportFormatterServiceImpl implements ReportFormatterService {
     public String formatDailyStat(DailyStatsResponse dailyStat) {
         String dateStr = formatDate(dailyStat.getDate());
         return String.format("%s: %d чел.", dateStr, dailyStat.getVisitorCount());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String formatDailyTelegramReport(LocalDate date, List<String> visitorNames,
+                                            List<String> newUserNames, int newUsersCount) {
+        log.debug("{}_ФОРМАТИРОВАНИЕ_ЕЖЕДНЕВНОГО_ОТЧЕТА_НАЧАЛО: дата: {}, посетителей: {}, новых: {}",
+                SERVICE_NAME, date, visitorNames.size(), newUsersCount);
+
+        StringBuilder report = new StringBuilder();
+        String formattedDate = formatDate(date);
+
+        report.append("📊 *Журнал посещений тренажерного зала*\n");
+        report.append("📅 *Дата:* ").append(formattedDate).append("\n");
+        report.append("👥 *Посетители:* ").append(visitorNames.size()).append(" чел.\n");
+
+        if (newUsersCount > 0) {
+            report.append("🆕 *Новых участников:* ").append(newUsersCount).append(" чел.\n");
+        }
+        report.append("\n");
+
+        if (visitorNames.isEmpty()) {
+            report.append("❌ *В этот день посетителей не было*");
+        } else {
+            report.append("*Список посетителей:*\n");
+            report.append(formatVisitorList(visitorNames));
+
+            if (newUsersCount > 0 && !newUserNames.isEmpty()) {
+                report.append("\n🆕 *Новые участники:*\n");
+                for (int i = 0; i < newUserNames.size(); i++) {
+                    String escapedName = escapeMarkdown(newUserNames.get(i));
+                    report.append(i + 1).append(". ").append(escapedName).append("\n");
+                }
+            }
+        }
+
+        String result = report.toString();
+        log.debug("{}_ФОРМАТИРОВАНИЕ_ЕЖЕДНЕВНОГО_ОТЧЕТА_УСПЕХ: " +
+                        "отчет сформирован, длина: {}, новых пользователей: {}",
+                SERVICE_NAME, result.length(), newUsersCount);
+
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String formatVisitorList(List<String> visitorNames) {
+        log.debug("{}_ФОРМАТИРОВАНИЕ_СПИСКА_ПОСЕТИТЕЛЕЙ_НАЧАЛО: посетителей: {}",
+                SERVICE_NAME, visitorNames.size());
+
+        StringBuilder list = new StringBuilder();
+        for (int i = 0; i < visitorNames.size(); i++) {
+            String escapedName = escapeMarkdown(visitorNames.get(i));
+            list.append(i + 1).append(". ").append(escapedName).append("\n");
+        }
+
+        String result = list.toString();
+        log.debug("{}_ФОРМАТИРОВАНИЕ_СПИСКА_ПОСЕТИТЕЛЕЙ_УСПЕХ: список сформирован",
+                SERVICE_NAME);
+
+        return result;
+    }
+
+    /**
+     * Экранирует специальные символы Markdown.
+     * Это предотвращает ошибки парсинга в Telegram.
+     */
+    private String escapeMarkdown(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+                .replace("_", "\\_")
+                .replace("*", "\\*")
+                .replace("[", "\\[")
+                .replace("]", "\\]")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replace("~", "\\~")
+                .replace("`", "\\`")
+                .replace(">", "\\>")
+                .replace("#", "\\#")
+                .replace("+", "\\+")
+                .replace("-", "\\-")
+                .replace("=", "\\=")
+                .replace("|", "\\|")
+                .replace("{", "\\{")
+                .replace("}", "\\}")
+                .replace(".", "\\.")
+                .replace("!", "\\!");
     }
 }

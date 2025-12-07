@@ -33,5 +33,6 @@ build/
 .vscode/
 /.mvn/
 
-.env
+.env-dev
+.env-prod
 

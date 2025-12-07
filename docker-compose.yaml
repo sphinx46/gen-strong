@@ -7,16 +7,14 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: ${DATABASE_URL}?sslmode=require&connectTimeout=30&socketTimeout=60
+      SPRING_DATASOURCE_URL: ${DATABASE_URL}?sslmode=require
       SPRING_DATASOURCE_USERNAME: ${PGUSER}
       SPRING_DATASOURCE_PASSWORD: ${PGPASSWORD}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME}
       ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_JPA_SHOW_SQL: false
-      JAVA_TOOL_OPTIONS: -Xms64m -Xmx128m -XX:+UseG1GC -Djava.awt.headless=true
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx128m -XX:+UseG1GC
     healthcheck:
       test: [ "CMD", "sh", "-c", "curl -f http://localhost:8080/actuator/health || exit 1" ]
       interval: 30s

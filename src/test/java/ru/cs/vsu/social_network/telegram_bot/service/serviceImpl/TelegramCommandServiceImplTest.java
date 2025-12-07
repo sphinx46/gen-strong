@@ -225,8 +225,13 @@ class TelegramCommandServiceImplTest {
 
         assertNotNull(result);
         assertTrue(result.contains("я не понял вашу команду"));
-        assertTrue(result.contains("Доступные команды"));
+        assertTrue(result.contains("Основные команды"));
         assertFalse(result.contains("Команды администратора"));
+
+        assertTrue(result.contains("/start - Начать работу с ботом"));
+        assertTrue(result.contains("Я в зале - Отметиться в тренажерном зале"));
+        assertTrue(result.contains("Сменить имя - Изменить имя для обращения"));
+        assertTrue(result.contains("/help - Показать справку по командам"));
     }
 
     @Test

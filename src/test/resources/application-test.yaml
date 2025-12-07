@@ -8,6 +8,9 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
 
   jpa:
     hibernate:
@@ -16,6 +19,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
 
   flyway:
     enabled: false
@@ -28,10 +32,40 @@ telegram:
     token: test_token
     username: test_bot
     name: "Test Bot"
+    long-polling:
+      timeout: 10
+      limit: 50
+      max-threads: 2
+    proxy:
+      enabled: false
 
 app:
   security:
     admin-telegram-ids: "123456789"
+    max-login-attempts: 3
+
+  scheduler:
+    enabled: false
+
+  features:
+    enable-notifications: false
+    enable-analytics: false
 
 server:
   port: 8081
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    root: WARN
+    ru.cs.vsu.social_network.telegram_bot: INFO

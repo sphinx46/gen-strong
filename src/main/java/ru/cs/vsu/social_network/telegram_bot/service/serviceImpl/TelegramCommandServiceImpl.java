@@ -32,10 +32,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/**
- * Реализация сервиса для обработки команд Telegram бота.
- * Управляет входящими командами, состояниями пользователей и формированием ответов.
- */
 @Slf4j
 @Service
 public class TelegramCommandServiceImpl implements TelegramCommandService {
@@ -60,19 +56,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
     private final Map<Long, String> adminStates = new HashMap<>();
     private final Map<Long, Double> pendingBenchPressValues = new HashMap<>();
 
-    /**
-     * Конструктор сервиса обработки команд Telegram.
-     *
-     * @param userService сервис работы с пользователями
-     * @param userTrainingEntityProvider провайдер тренировочных данных
-     * @param visitService сервис работы с посещениями
-     * @param reportService сервис генерации отчетов
-     * @param tableFormatterService сервис форматирования таблиц
-     * @param excelTrainingService сервис генерации Excel файлов
-     * @param imageTrainingService сервис генерации изображений
-     * @param userTrainingService сервис работы с тренировочными данными
-     * @param documentSenderService сервис отправки документов
-     */
     public TelegramCommandServiceImpl(final UserService userService,
                                       final UserTrainingEntityProvider userTrainingEntityProvider,
                                       final VisitService visitService,
@@ -93,9 +76,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         this.documentSenderService = documentSenderService;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleStartCommand(final Long telegramId, final String username,
                                      final String firstName, final String lastName) {
@@ -127,9 +107,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         return response;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleInGymCommand(final Long telegramId) {
         log.info("{}_КОМАНДА_В_ЗАЛЕ_НАЧАЛО: обработка команды 'Я в зале' для Telegram ID: {}",
@@ -165,9 +142,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleDisplayNameInput(final Long telegramId, final String displayName) {
         log.info("{}_ВВОД_ИМЕНИ_НАЧАЛО: обработка имени '{}' для Telegram ID: {}",
@@ -239,9 +213,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleFormatSelection(final Long telegramId, final String formatChoice) {
         log.info("{}_ВЫБОР_ФОРМАТА_НАЧАЛО: обработка выбора формата '{}' для Telegram ID: {}",
@@ -283,9 +254,13 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
             File trainingFile = null;
             String formatType = "";
 
-            if ("Изображение".equalsIgnoreCase(formatChoice) ||
-                    "Картинка".equalsIgnoreCase(formatChoice) ||
-                    "1".equals(formatChoice)) {
+            String normalizedChoice = formatChoice.trim().toLowerCase();
+
+            if ("1".equals(normalizedChoice) ||
+                    normalizedChoice.contains("изображение") ||
+                    normalizedChoice.contains("картинка") ||
+                    normalizedChoice.contains("image") ||
+                    normalizedChoice.contains("img")) {
 
                 log.info("{}_ГЕНЕРАЦИЯ_ИЗОБРАЖЕНИЯ_НАЧАЛО: пользователь {}",
                         SERVICE_NAME, telegramId);
@@ -296,9 +271,10 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 log.info("{}_ГЕНЕРАЦИЯ_ИЗОБРАЖЕНИЯ_УСПЕХ: файл создан: {}",
                         SERVICE_NAME, trainingFile.getAbsolutePath());
 
-            } else if ("Excel".equalsIgnoreCase(formatChoice) ||
-                    "Таблица".equalsIgnoreCase(formatChoice) ||
-                    "2".equals(formatChoice)) {
+            } else if ("2".equals(normalizedChoice) ||
+                    normalizedChoice.contains("excel") ||
+                    normalizedChoice.contains("таблица") ||
+                    normalizedChoice.contains("exl")) {
 
                 log.info("{}_ГЕНЕРАЦИЯ_EXCEL_НАЧАЛО: пользователь {}",
                         SERVICE_NAME, telegramId);
@@ -312,7 +288,10 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
             } else {
                 log.warn("{}_ВЫБОР_ФОРМАТА_НЕИЗВЕСТНЫЙ: неизвестный формат '{}'",
                         SERVICE_NAME, formatChoice);
-                return "Пожалуйста, выберите корректный формат: 'Изображение' или 'Excel'.";
+                return "Пожалуйста, выберите корректный формат:\n" +
+                        "1. Изображение\n" +
+                        "2. Excel таблица\n\n" +
+                        "Введите '1' или '2'.";
             }
 
             final String caption = buildTrainingProgramCaption(user, benchPressValue, formatType);
@@ -339,9 +318,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleDailyReportCommand(final Long telegramId, final String dateStr) {
         log.info("{}_КОМАНДА_ОТЧЕТ_ЗА_ДЕНЬ_НАЧАЛО: " +
@@ -395,9 +371,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handlePeriodReportCommand(final Long telegramId,
                                             final String startDateStr,
@@ -450,9 +423,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleTableCommand(final Long telegramId, final String input) {
         log.info("{}_КОМАНДА_ТАБЛИЦА_НАЧАЛО: администратор {}, ввод: {}",
@@ -493,9 +463,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleAdminMenuCommand(final Long telegramId, final String menuCommand) {
         log.info("{}_КОМАНДА_АДМИН_МЕНЮ_НАЧАЛО: администратор {}, команда меню: {}",
@@ -539,9 +506,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleAdminDateInput(final Long telegramId, final String dateInput) {
         log.info("{}_ВВОД_ДАТЫ_АДМИН_НАЧАЛО: администратор {}, ввод: {}",
@@ -583,9 +547,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleHelpCommand(final Long telegramId) {
         log.info("{}_КОМАНДА_HELP_НАЧАЛО: обработка команды /help для Telegram ID: {}",
@@ -638,9 +599,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleUnknownCommand(final Long telegramId) {
         log.debug("{}_НЕИЗВЕСТНАЯ_КОМАНДА: Telegram ID {}",
@@ -727,9 +685,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleChangeNameCommand(final Long telegramId) {
         log.info("{}_КОМАНДА_СМЕНЫ_ИМЕНИ_НАЧАЛО: пользователь {} хочет сменить имя",
@@ -761,9 +716,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleTrainingProgramCommand(final Long telegramId) {
         log.info("{}_КОМАНДА_ПРОГРАММА_ТРЕНИРОВОК_НАЧАЛО: пользователь {} запрашивает программу",
@@ -807,9 +759,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String handleBenchPressInput(final Long telegramId, String benchPressInput) {
         log.info("{}_ВВОД_ЖИМА_ЛЕЖА_НАЧАЛО: обработка ввода '{}' для Telegram ID: {}",
@@ -858,7 +807,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                     "В каком формате предоставить программу тренировок?\n\n" +
                     "1. Изображение (рекомендуется для удобного просмотра в Telegram)\n" +
                     "2. Excel таблица (для открытия на компьютере)\n\n" +
-                    "Введите номер или название формата:";
+                    "Введите '1' или '2':";
 
         } catch (Exception e) {
             log.error("{}_ВВОД_ЖИМА_ЛЕЖА_ОШИБКА: ошибка при обработке ввода для {}: {}",
@@ -869,15 +818,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * Создает подпись для файла с программой тренировок.
-     * Включает информацию о пользователе, максимальном жиме лежа и тренировочной системе.
-     *
-     * @param user информация о пользователе
-     * @param currentBenchPress текущее значение максимального жима лежа
-     * @param formatType выбранный формат программы (изображение или Excel)
-     * @return форматированная подпись для файла программы тренировок
-     */
     private String buildTrainingProgramCaption(final UserInfoResponse user,
                                                final double currentBenchPress,
                                                final String formatType) {
@@ -902,12 +842,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         return caption.toString();
     }
 
-    /**
-     * Получает таблицу посещений за текущий день.
-     *
-     * @param adminUserId идентификатор администратора
-     * @return форматированная таблица посещений за сегодня
-     */
     private String getTableForToday(final UUID adminUserId) {
         log.info("{}_ТАБЛИЦА_ЗА_ТЕКУЩИЙ_ДЕНЬ_НАЧАЛО: администратор {}",
                 SERVICE_NAME, adminUserId);
@@ -918,13 +852,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         return tableFormatterService.formatTableForToday(adminUserId.toString(), existingLog);
     }
 
-    /**
-     * Получает таблицу посещений за указанную дату.
-     *
-     * @param adminUserId идентификатор администратора
-     * @param dateStr строка с датой в формате ДД.ММ.ГГГГ
-     * @return форматированная таблица посещений за указанную дату
-     */
     private String getTableForDate(final UUID adminUserId, final String dateStr) {
         log.info("{}_ТАБЛИЦА_ЗА_ДАТУ_НАЧАЛО: администратор {}, дата: {}",
                 SERVICE_NAME, adminUserId, dateStr);
@@ -943,14 +870,6 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         }
     }
 
-    /**
-     * Получает таблицу посещений за указанный период.
-     *
-     * @param adminUserId идентификатор администратора
-     * @param startDateStr строка с начальной датой в формате ДД.ММ.ГГГГ
-     * @param endDateStr строка с конечной датой в формате ДД.ММ.ГГГГ
-     * @return форматированная таблица посещений за указанный период
-     */
     private String getTableForPeriod(final UUID adminUserId, final String startDateStr, final String endDateStr) {
         log.info("{}_ТАБЛИЦА_ЗА_ПЕРИОД_НАЧАЛО: администратор {}, период: {} - {}",
                 SERVICE_NAME, adminUserId, startDateStr, endDateStr);

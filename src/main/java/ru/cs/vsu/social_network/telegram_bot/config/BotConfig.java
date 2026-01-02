@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import ru.cs.vsu.social_network.telegram_bot.bot.GymTelegramBot;
+import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
+import ru.cs.vsu.social_network.telegram_bot.service.UserService;
 
 /**
  * Конфигурация Telegram бота.
@@ -37,11 +39,6 @@ public class BotConfig {
     @Value("${telegram.proxy.type:SOCKS5}")
     private String proxyType;
 
-    /**
-     * Создает и настраивает опции бота как Spring Bean.
-     *
-     * @return настроенные опции бота
-     */
     @Bean
     public DefaultBotOptions botOptions() {
         log.info("БОТ_КОНФИГ_СОЗДАНИЕ_ОПЦИЙ: создание DefaultBotOptions бина");
@@ -60,11 +57,6 @@ public class BotConfig {
         return botOptions;
     }
 
-    /**
-     * Настраивает прокси для бота.
-     *
-     * @param botOptions опции бота для настройки
-     */
     private void configureProxy(final DefaultBotOptions botOptions) {
         try {
             final DefaultBotOptions.ProxyType proxyTypeEnum =
@@ -83,47 +75,27 @@ public class BotConfig {
         }
     }
 
-    /**
-     * Создает и регистрирует экземпляр Telegram бота.
-     *
-     * @param botOptions опции бота
-     * @return настроенный экземпляр бота
-     */
     @Lazy
     @Bean
     public GymTelegramBot gymTelegramBot(final DefaultBotOptions botOptions,
-                                         final ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService telegramCommandService) {
+                                         final TelegramCommandService telegramCommandService,
+                                         final UserService userService) {
         log.info("БОТ_КОНФИГ_СОЗДАНИЕ_БОТА: создание GymTelegramBot с username: {}", botUsername);
 
-        final GymTelegramBot bot = new GymTelegramBot(botOptions, this, telegramCommandService);
+        final GymTelegramBot bot = new GymTelegramBot(botOptions, this, telegramCommandService, userService);
 
         log.info("БОТ_КОНФИГ_СОЗДАНИЕ_БОТА_УСПЕХ: бот {} успешно создан", botUsername);
         return bot;
     }
 
-    /**
-     * Получает токен бота.
-     *
-     * @return токен бота
-     */
     public String getBotToken() {
         return botToken;
     }
 
-    /**
-     * Получает username бота.
-     *
-     * @return username бота
-     */
     public String getBotUsername() {
         return botUsername;
     }
 
-    /**
-     * Получает имя бота.
-     *
-     * @return имя бота
-     */
     public String getBotName() {
         return botName;
     }

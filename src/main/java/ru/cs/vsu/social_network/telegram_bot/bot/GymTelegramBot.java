@@ -14,6 +14,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.cs.vsu.social_network.telegram_bot.config.BotConfig;
 import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
+import ru.cs.vsu.social_network.telegram_bot.entity.enums.ROLE;
+import ru.cs.vsu.social_network.telegram_bot.dto.response.UserInfoResponse;
+import ru.cs.vsu.social_network.telegram_bot.service.UserService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -23,11 +26,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * Основной обработчик Telegram бота для тренажерного зала "Поколение сильных".
- * Получает обновления от Telegram и делегирует обработку сервису команд.
- * Обеспечивает взаимодействие с пользователями через меню и команды.
- */
 @Slf4j
 @Component
 public class GymTelegramBot extends TelegramLongPollingBot {
@@ -39,43 +37,30 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
     private final BotConfig botConfig;
     private final TelegramCommandService telegramCommandService;
+    private final UserService userService;
 
-    /**
-     * Конструктор основного обработчика бота.
-     *
-     * @param botOptions опции бота для конфигурации
-     * @param botConfig конфигурация бота с токеном и именем пользователя
-     * @param telegramCommandService сервис для обработки команд Telegram
-     */
     public GymTelegramBot(final DefaultBotOptions botOptions,
                           final BotConfig botConfig,
-                          final TelegramCommandService telegramCommandService) {
+                          final TelegramCommandService telegramCommandService,
+                          final UserService userService) {
         super(botOptions);
         this.botConfig = botConfig;
         this.telegramCommandService = telegramCommandService;
+        this.userService = userService;
 
         log.info("{}_ИНИЦИАЛИЗАЦИЯ_НАЧАЛО: создание бота {}", BOT_NAME, botConfig.getBotUsername());
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getBotUsername() {
         return botConfig.getBotUsername();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getBotToken() {
         return botConfig.getBotToken();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onUpdateReceived(final Update update) {
         log.debug("{}_ОБНОВЛЕНИЕ_ПОЛУЧЕНО: получено новое обновление", BOT_NAME);
@@ -104,16 +89,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Обрабатывает входящее текстовое сообщение и определяет его тип.
-     * Определяет, является ли сообщение командой, текстом кнопки меню или вводом данных.
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param chatId ID чата
-     * @param text текст сообщения
-     * @param message исходное сообщение
-     * @return текст ответа для пользователя
-     */
     private String processMessage(final Long telegramId,
                                   final Long chatId,
                                   final String text,
@@ -140,13 +115,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Проверяет, является ли текст валидной датой.
-     * Поддерживает форматы: ДД.ММ.ГГГГ, а также специальные значения "сегодня" и "вчера".
-     *
-     * @param text текст для проверки
-     * @return true, если текст является валидной датой или специальным значением
-     */
     private boolean isDateInput(String text) {
         try {
             if ("сегодня".equalsIgnoreCase(text.trim()) ||
@@ -160,24 +128,10 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Проверяет, является ли текст валидным вводом максимального жима лежа.
-     * Поддерживает целые числа и числа с плавающей точкой (до 2 знаков после запятой).
-     *
-     * @param text текст для проверки
-     * @return true, если текст является валидным значением жима лежа
-     */
     private boolean isBenchPressInput(String text) {
         return BENCH_PRESS_PATTERN.matcher(text.trim()).matches();
     }
 
-    /**
-     * Проверяет, является ли текст выбором формата программы тренировок.
-     * Поддерживает различные варианты ввода для выбора формата.
-     *
-     * @param text текст для проверки
-     * @return true, если текст является выбором формата
-     */
     private boolean isFormatSelection(String text) {
         String lowerText = text.trim().toLowerCase();
         return "изображение".equals(lowerText) ||
@@ -188,15 +142,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 "2".equals(text.trim());
     }
 
-    /**
-     * Обрабатывает команды, начинающиеся с "/".
-     * Разбирает команду и передает управление соответствующему обработчику.
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param commandText текст команды
-     * @param message исходное сообщение
-     * @return текст ответа
-     */
     private String processCommand(final Long telegramId,
                                   final String commandText,
                                   final Message message) {
@@ -256,14 +201,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Обрабатывает команду /start.
-     * Регистрирует нового пользователя или приветствует существующего.
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param message исходное сообщение
-     * @return текст приветствия
-     */
     private String handleStartCommand(final Long telegramId, final Message message) {
         final String username = message.getFrom().getUserName();
         final String firstName = message.getFrom().getFirstName();
@@ -274,17 +211,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return telegramCommandService.handleStartCommand(telegramId, username, firstName, lastName);
     }
 
-    /**
-     * Обрабатывает команду /report.
-     * Поддерживает три варианта:
-     * 1. /report (сегодня) - отчет за текущий день
-     * 2. /report - отчет за текущий день
-     * 3. /report ДД.ММ.ГГГГ - отчет за указанный день
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param parts части команды
-     * @return сформированный отчет
-     */
     private String handleReportCommand(final Long telegramId, final String[] parts) {
         String dateStr = null;
 
@@ -301,15 +227,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return telegramCommandService.handleDailyReportCommand(telegramId, dateStr);
     }
 
-    /**
-     * Обрабатывает команду /report period.
-     * Генерирует отчет за указанный период времени.
-     * Формат команды: /report period ДД.ММ.ГГГГ ДД.ММ.ГГГГ
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param parts части команды: [0]="/report period", [1]=начальная дата, [2]=конечная дата
-     * @return отчет за период или сообщение об ошибке
-     */
     private String handleReportPeriodCommand(final Long telegramId, final String[] parts) {
         if (parts.length < 3) {
             log.warn("{}_КОМАНДА_REPORT_PERIOD_НЕПОЛНАЯ: недостаточно параметров от {}",
@@ -328,17 +245,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return telegramCommandService.handlePeriodReportCommand(telegramId, startDateStr, endDateStr);
     }
 
-    /**
-     * Обрабатывает команду /table.
-     * Позволяет получить таблицу посещений в различных форматах:
-     * 1. /table - за текущий день
-     * 2. /table ДД.ММ.ГГГГ - за указанный день
-     * 3. /table ДД.ММ.ГГГГ ДД.ММ.ГГГГ - за указанный период
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param parts части команды
-     * @return форматированная таблица посещений
-     */
     private String handleTableCommand(final Long telegramId, final String[] parts) {
         String input = null;
         if (parts.length > 1) {
@@ -356,23 +262,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return telegramCommandService.handleTableCommand(telegramId, input);
     }
 
-    /**
-     * Отправляет ответ пользователю в Telegram.
-     * Форматирует сообщение, добавляет клавиатуру при необходимости.
-     *
-     * @param chatId ID чата
-     * @param responseText текст ответа
-     * @param telegramId Telegram ID пользователя
-     */
     private void sendResponse(final Long chatId, final String responseText, final Long telegramId) {
         try {
             final SendMessage message = new SendMessage();
             message.setChatId(chatId.toString());
             message.setText(responseText);
 
-            if (shouldAddMenu(telegramId, responseText)) {
-                message.setReplyMarkup(createMainMenuKeyboard(telegramId));
-            }
+            message.setReplyMarkup(createMainMenuKeyboard(telegramId));
 
             final Message sentMessage = execute(message);
 
@@ -385,35 +281,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Определяет, нужно ли добавлять меню к ответу.
-     * Меню не добавляется при определенных типах сообщений,
-     * таких как запросы ввода данных или сообщения об ошибках.
-     *
-     * @param telegramId Telegram ID пользователя
-     * @param responseText текст ответа
-     * @return true, если нужно добавить меню
-     */
-    private boolean shouldAddMenu(final Long telegramId, final String responseText) {
-        return !responseText.contains("Как мне к вам обращаться") &&
-                !responseText.contains("Пожалуйста, введите имя") &&
-                !responseText.contains("Выберите дату для отчета") &&
-                !responseText.contains("Ожидается ввод даты") &&
-                !responseText.contains("В каком формате предоставить") &&
-                !responseText.contains("Какой ваш максимальный жим лежа") &&
-                !responseText.startsWith("Произошла ошибка") &&
-                !responseText.startsWith("Неверный формат") &&
-                !responseText.startsWith("Доступ запрещен");
-    }
-
-    /**
-     * Создает основное меню с кнопками.
-     * Для администраторов добавляются дополнительные кнопки отчетов.
-     * Кнопки меню настроены для запуска соответствующих команд через сервис.
-     *
-     * @param telegramId Telegram ID пользователя для определения роли
-     * @return клавиатура с меню
-     */
     private ReplyKeyboardMarkup createMainMenuKeyboard(final Long telegramId) {
         final ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setSelective(true);
@@ -429,8 +296,9 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         keyboard.add(row1);
 
         try {
-            final String response = telegramCommandService.handleUnknownCommand(telegramId);
-            if (response.contains("Команды администратора")) {
+            UserInfoResponse user = userService.getUserByTelegramId(telegramId);
+
+            if (user.getRole() == ROLE.ADMIN) {
                 final KeyboardRow adminRow1 = new KeyboardRow();
                 adminRow1.add(new KeyboardButton("Получить журнал за сегодня"));
                 keyboard.add(adminRow1);
@@ -444,45 +312,23 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 keyboard.add(adminRow3);
             }
 
-            final KeyboardRow helpRow = new KeyboardRow();
-            helpRow.add(new KeyboardButton("/help"));
-            keyboard.add(helpRow);
-
         } catch (Exception e) {
             log.warn("{}_МЕНЮ_ОШИБКА: не удалось определить роль пользователя {}: {}",
                     BOT_NAME, telegramId, e.getMessage());
-
-            final KeyboardRow row2 = new KeyboardRow();
-            row2.add(new KeyboardButton("Я в зале"));
-            row2.add(new KeyboardButton("Сменить имя"));
-            row2.add(new KeyboardButton("Составить программу тренировок"));
-            keyboard.add(row2);
-
-            final KeyboardRow helpRow = new KeyboardRow();
-            helpRow.add(new KeyboardButton("/help"));
-            keyboard.add(helpRow);
         }
+
+        final KeyboardRow helpRow = new KeyboardRow();
+        helpRow.add(new KeyboardButton("/help"));
+        keyboard.add(helpRow);
 
         keyboardMarkup.setKeyboard(keyboard);
         return keyboardMarkup;
     }
 
-    /**
-     * Получает текущую дату в формате ДД.ММ.ГГГГ.
-     *
-     * @return текущая дата в формате ДД.ММ.ГГГГ
-     */
     private String getCurrentDateFormatted() {
         return LocalDate.now().format(DATE_FORMATTER);
     }
 
-    /**
-     * Отправляет сообщение об ошибке пользователю.
-     * Используется при возникновении исключений в процессе обработки.
-     *
-     * @param chatId ID чата
-     * @param telegramId Telegram ID пользователя
-     */
     private void sendErrorResponse(final Long chatId, final Long telegramId) {
         try {
             final SendMessage message = new SendMessage();
@@ -501,14 +347,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Удаляет сообщение из чата.
-     * Может использоваться для удаления устаревших или конфиденциальных сообщений.
-     *
-     * @param chatId ID чата
-     * @param messageId ID сообщения
-     * @param telegramId Telegram ID пользователя
-     */
     private void deleteMessage(final Long chatId, final Integer messageId, final Long telegramId) {
         try {
             final DeleteMessage deleteMessage = new DeleteMessage();
@@ -526,18 +364,10 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Получает имя бота.
-     *
-     * @return имя бота из конфигурации
-     */
     public String getBotName() {
         return botConfig.getBotName();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onRegister() {
         super.onRegister();

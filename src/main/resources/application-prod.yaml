@@ -18,7 +18,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
 
   flyway:
@@ -43,10 +43,3 @@ app:
 
 server:
   port: ${PORT:8080}
-
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.hibernate.engine.jdbc.env.internal.LobCreatorBuilderImpl: DEBUG
-    org.springframework.orm.jpa: DEBUG

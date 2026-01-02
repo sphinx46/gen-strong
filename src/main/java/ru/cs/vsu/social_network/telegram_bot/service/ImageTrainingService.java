@@ -34,16 +34,4 @@ public interface ImageTrainingService {
      * @throws ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException если не удалось конвертировать файл
      */
     BufferedImage convertExcelToImage(File excelFile, String outputFormat);
-
-    /**
-     * Генерирует изображение на основе данных без создания промежуточного Excel файла.
-     * Прямая генерация изображения на основе данных пользователя.
-     *
-     * @param userId идентификатор пользователя
-     * @param maxBenchPress максимальный жим лежа в килограммах
-     * @param trainingCycleName название тренировочного цикла
-     * @return сгенерированное изображение с программой тренировок
-     * @throws ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException если не удалось сгенерировать изображение
-     */
-    File generateImageFromData(UUID userId, Double maxBenchPress, String trainingCycleName);
 }

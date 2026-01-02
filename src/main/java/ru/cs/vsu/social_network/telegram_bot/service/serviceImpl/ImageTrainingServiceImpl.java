@@ -38,9 +38,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     @Value("${training.image.format:png}")
     private String defaultImageFormat;
 
-    @Value("${training.image.compression.quality:0.85}")
-    private float compressionQuality;
-
     @Value("${training.image.cell.height:80}")
     private int cellHeight;
 
@@ -50,7 +47,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     @Value("${training.image.footer.height:50}")
     private int footerHeight;
 
-    @Value("${training.image.padding:30}")
+    @Value("${training.image.padding:40}")
     private int padding;
 
     @Value("${training.image.font.size.title:36}")
@@ -65,10 +62,10 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     @Value("${training.image.min.column.width:120}")
     private int minColumnWidth;
 
-    @Value("${training.image.max.columns:15}")
+    @Value("${training.image.max.columns:50}")
     private int maxColumns;
 
-    @Value("${training.image.max.rows:100}")
+    @Value("${training.image.max.rows:200}")
     private int maxRows;
 
     @Value("${training.image.cache.enabled:true}")
@@ -82,9 +79,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
     @Value("${training.image.optimize.empty.columns:true}")
     private boolean optimizeEmptyColumns;
-
-    @Value("${training.image.memory.safe.enabled:true}")
-    private boolean memorySafeEnabled;
 
     @Value("${training.image.chunk.size:10}")
     private int chunkSize;
@@ -101,7 +95,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     private final Color footerTextColor;
 
     private final ConcurrentHashMap<String, CachedImage> imageCache;
-    private volatile boolean memoryPressureDetected;
 
     private static class CachedImage {
         final byte[] compressedImageData;
@@ -139,14 +132,11 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         this.verticalTextColor = Color.BLACK;
         this.footerTextColor = new Color(100, 100, 100);
         this.imageCache = new ConcurrentHashMap<>();
-        this.memoryPressureDetected = false;
     }
 
     @Override
     public File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest) {
         log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО пользователь {} жим лежа {} кг", userId, userBenchPressRequest.getMaxBenchPress());
-
-        final String logPrefix = "ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН";
 
         try {
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ГЕНЕРАЦИЯ создание Excel файла для пользователя {}", userId);
@@ -230,8 +220,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     public BufferedImage convertExcelToImage(File excelFile, String outputFormat) {
         log.info("EXCEL_В_ИЗОБРАЖЕНИЕ_КОНВЕРТАЦИЯ_НАЧАЛО файл {} формат {}", excelFile.getName(), outputFormat);
 
-        final String logPrefix = "EXCEL_КОНВЕРТАЦИЯ";
-
         validateExcelFile(excelFile);
 
         try (InputStream inputStream = new FileInputStream(excelFile)) {
@@ -254,11 +242,13 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 if (actualRows > maxRows) {
                     log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_БОЛЬШАЯ строк {} > {} будет обрезано", actualRows, maxRows);
                     actualRows = Math.min(actualRows, maxRows);
+                    nonEmptyRowIndices = nonEmptyRowIndices.subList(0, actualRows);
                 }
 
                 if (actualColumns > maxColumns) {
                     log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ колонок {} > {} будет обрезано", actualColumns, maxColumns);
                     actualColumns = Math.min(actualColumns, maxColumns);
+                    nonEmptyColumnIndices = nonEmptyColumnIndices.subList(0, actualColumns);
                 }
 
                 checkMemoryRequirements(actualRows, actualColumns);
@@ -280,7 +270,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 long estimatedMemory = (long) imageWidth * imageHeight * 4L;
                 log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_ПАМЯТИ требуется примерно {} байт для {}x{}", estimatedMemory, imageWidth, imageHeight);
 
-                if (estimatedMemory > 80_000_000L || memorySafeEnabled) {
+                if (estimatedMemory > 80_000_000L) {
                     log.info("EXCEL_КОНВЕРТАЦИЯ_БЕЗОПАСНЫЙ_РЕЖИМ использование чанковой отрисовки");
                     return renderImageChunked(sheet, actualColumns, actualRows, imageWidth, imageHeight,
                             columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
@@ -311,7 +301,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         } catch (OutOfMemoryError e) {
             log.error("EXCEL_КОНВЕРТАЦИЯ_ПЕРЕПОЛНЕНИЕ_ПАМЯТИ {} запуск очистки памяти", e.getMessage());
 
-            memoryPressureDetected = true;
             System.gc();
             try {
                 Thread.sleep(500);
@@ -326,59 +315,25 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         }
     }
 
-    @Override
-    public File generateImageFromData(UUID userId, Double maxBenchPress, String trainingCycleName) {
-        log.info("ИЗОБРАЖЕНИЕ_ИЗ_ДАННЫХ_ГЕНЕРАЦИЯ_НАЧАЛО пользователь {} жим лежа {} кг цикл {}", userId, maxBenchPress, trainingCycleName);
-
-        final String logPrefix = "ИЗОБРАЖЕНИЕ_ИЗ_ДАННЫХ";
-
-        try {
-            Path outputPath = createOutputPath(userId);
-
-            int imageWidth = 1000;
-            int imageHeight = 500;
-
-            BufferedImage image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics = image.createGraphics();
-
-            try {
-                configureGraphicsQuality(graphics);
-                drawSimpleImageContent(graphics, imageWidth, imageHeight);
-            } finally {
-                graphics.dispose();
-            }
-
-            saveImageWithCompression(image, outputPath);
-            long fileSize = Files.size(outputPath);
-            log.info("ИЗОБРАЖЕНИЕ_ИЗ_ДАННЫХ_ИЗОБРАЖЕНИЕ_СОХРАНЕНО размер {} байт", fileSize);
-
-            File resultImage = outputPath.toFile();
-            log.info("ИЗОБРАЖЕНИЕ_ИЗ_ДАННЫХ_ГЕНЕРАЦИЯ_УСПЕХ пользователь {} файл {}", userId, resultImage.getAbsolutePath());
-
-            return resultImage;
-
-        } catch (Exception e) {
-            log.error("ИЗОБРАЖЕНИЕ_ИЗ_ДАННЫХ_ГЕНЕРАЦИЯ_ОШИБКА {}", e.getMessage(), e);
-            throw new GenerateTrainingPlanException("Ошибка генерации изображения из данных: " + e.getMessage());
-        }
-    }
-
     private SheetAnalysisResult analyzeSheetWithOptimization(Sheet sheet) {
-        int totalRows = sheet.getLastRowNum() + 1;
+        int totalRows = Math.min(sheet.getLastRowNum() + 1, maxRows);
         List<Integer> nonEmptyRowIndices = new ArrayList<>();
         Set<Integer> nonEmptyColumnSet = new HashSet<>();
-        int maxColumnIndex = 0;
+        int firstDataColumn = Integer.MAX_VALUE;
+        int lastDataColumn = -1;
 
         for (int i = 0; i < totalRows; i++) {
             Row row = sheet.getRow(i);
             if (row != null) {
                 boolean rowHasData = false;
-                for (int j = 0; j <= row.getLastCellNum(); j++) {
+                int lastCellNum = row.getLastCellNum();
+                for (int j = 0; j < lastCellNum; j++) {
                     Cell cell = row.getCell(j);
                     if (hasCellContent(cell)) {
                         rowHasData = true;
                         nonEmptyColumnSet.add(j);
-                        maxColumnIndex = Math.max(maxColumnIndex, j);
+                        if (j < firstDataColumn) firstDataColumn = j;
+                        if (j > lastDataColumn) lastDataColumn = j;
                     }
                 }
                 if (rowHasData) {
@@ -387,13 +342,23 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             }
         }
 
-        List<Integer> nonEmptyColumnIndices = new ArrayList<>(nonEmptyColumnSet);
-        Collections.sort(nonEmptyColumnIndices);
+        List<Integer> nonEmptyColumnIndices = new ArrayList<>();
+
+        if (firstDataColumn == Integer.MAX_VALUE) {
+            firstDataColumn = 0;
+        }
+        if (lastDataColumn == -1) {
+            lastDataColumn = Math.max(0, firstDataColumn);
+        }
 
         if (optimizeEmptyColumns) {
-            nonEmptyColumnIndices = nonEmptyColumnIndices.stream()
-                    .limit(maxColumns)
-                    .collect(java.util.stream.Collectors.toList());
+            for (int i = firstDataColumn; i <= lastDataColumn && i <= maxColumns; i++) {
+                nonEmptyColumnIndices.add(i);
+            }
+        } else {
+            for (int i = 0; i <= Math.min(lastDataColumn, maxColumns); i++) {
+                nonEmptyColumnIndices.add(i);
+            }
         }
 
         int actualRows = Math.min(nonEmptyRowIndices.size(), maxRows);
@@ -425,7 +390,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         long estimatedMemory = (long) rows * columns * cellHeight * 120 * 4L;
         if (estimatedMemory > 200_000_000L) {
             log.warn("ПРОВЕРКА_ПАМЯТИ оценка памяти {} байт для {} строк {} колонок", estimatedMemory, rows, columns);
-            memoryPressureDetected = true;
             System.gc();
         }
     }
@@ -440,8 +404,8 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             tempGraphics.setFont(tempFont);
             FontMetrics metrics = tempGraphics.getFontMetrics();
 
-            int rowsToAnalyze = Math.min(rowIndices.size(), 20);
-            int columnsToAnalyze = Math.min(columnIndices.size(), 10);
+            int rowsToAnalyze = Math.min(rowIndices.size(), 30);
+            int columnsToAnalyze = Math.min(columnIndices.size(), 30);
 
             for (int i = 0; i < rowsToAnalyze && i < rowIndices.size(); i++) {
                 int rowIndex = rowIndices.get(i);
@@ -453,7 +417,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                         String cellValue = getCellValueAsString(cell);
                         if (cellValue != null && !cellValue.isEmpty()) {
                             int textWidth = metrics.stringWidth(cellValue);
-                            maxCellWidth = Math.max(maxCellWidth, textWidth + 40);
+                            maxCellWidth = Math.max(maxCellWidth, textWidth + 30);
                         }
                     }
                 }
@@ -465,7 +429,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             return minColumnWidth;
         }
 
-        return Math.min(maxCellWidth, 300);
+        return Math.min(maxCellWidth, 350);
     }
 
     private void drawImageContent(Graphics2D graphics, Sheet sheet, int columnCount, int rowCount,
@@ -587,7 +551,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             graphics.drawLine(tableStartX, y + cellHeight, tableStartX + tableWidth, y + cellHeight);
         }
 
-        for (int j = 0; j <= columnCount; j++) {
+        for (int j = 0; j <= columnCount && j <= columnIndices.size(); j++) {
             int x = tableStartX + j * colWidth;
             graphics.drawLine(x, tableStartY, x, tableStartY + (rowCount + 1) * cellHeight);
         }
@@ -687,12 +651,12 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 }
             }
 
-            for (int j = 0; j <= columnCount; j++) {
+            for (int j = 0; j <= columnCount && j <= columnIndices.size(); j++) {
                 int x = tableStartX + j * columnWidth;
                 graphics.drawLine(x, tableStartY, x, tableStartY + (rowCount + 1) * cellHeight);
             }
 
-            for (int i = 0; i <= rowCount; i++) {
+            for (int i = 0; i <= rowCount && i <= rowIndices.size(); i++) {
                 int y = tableStartY + (i + 1) * cellHeight;
                 graphics.drawLine(tableStartX, y, tableStartX + tableWidth, y);
             }
@@ -791,42 +755,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         }
 
         graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-    }
-
-    private void drawSimpleImageContent(Graphics2D graphics, int imageWidth, int imageHeight) {
-        graphics.setColor(backgroundColor);
-        graphics.fillRect(0, 0, imageWidth, imageHeight);
-
-        graphics.setColor(headerColor);
-        graphics.fillRect(0, 0, imageWidth, 100);
-
-        Font titleFont = new Font("Arial", Font.BOLD, 36);
-        graphics.setFont(titleFont);
-        graphics.setColor(Color.WHITE);
-
-        String title = "ТРЕНИРОВОЧНЫЙ ПЛАН";
-        FontMetrics titleMetrics = graphics.getFontMetrics(titleFont);
-        int titleX = (imageWidth - titleMetrics.stringWidth(title)) / 2;
-        graphics.drawString(title, titleX, 65);
-
-        graphics.setColor(verticalTextColor);
-        graphics.setFont(new Font("Arial", Font.BOLD, 20));
-        graphics.drawString("Персональная программа тренировок", 60, 180);
-
-        graphics.setFont(new Font("Arial", Font.BOLD, 28));
-        graphics.drawString("Gen Strong", 60, 220);
-
-        graphics.setColor(footerTextColor);
-        graphics.setFont(new Font("Arial", Font.ITALIC, 16));
-
-        String footerText = "Сгенерировано Gen Strong ботом • " +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
-
-        FontMetrics footerMetrics = graphics.getFontMetrics();
-        int footerX = (imageWidth - footerMetrics.stringWidth(footerText)) / 2;
-        int footerY = 450;
-
-        graphics.drawString(footerText, footerX, footerY);
     }
 
     private String getCellValueAsString(Cell cell) {

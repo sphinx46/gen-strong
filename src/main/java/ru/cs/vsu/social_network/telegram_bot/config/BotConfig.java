@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import ru.cs.vsu.social_network.telegram_bot.bot.GymTelegramBot;
 
@@ -88,6 +89,7 @@ public class BotConfig {
      * @param botOptions опции бота
      * @return настроенный экземпляр бота
      */
+    @Lazy
     @Bean
     public GymTelegramBot gymTelegramBot(final DefaultBotOptions botOptions,
                                          final ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService telegramCommandService) {

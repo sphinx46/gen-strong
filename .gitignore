@@ -33,6 +33,8 @@ build/
 .vscode/
 /.mvn/
 
+.DS_STORE
 .env-dev
 .env-prod
 
+/.mvn/wrapper/

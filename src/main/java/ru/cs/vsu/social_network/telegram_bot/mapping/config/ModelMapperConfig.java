@@ -7,10 +7,12 @@ import org.modelmapper.PropertyMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import ru.cs.vsu.social_network.telegram_bot.dto.request.AddVisitorRequest;
+import ru.cs.vsu.social_network.telegram_bot.dto.request.UserBenchPressRequest;
 import ru.cs.vsu.social_network.telegram_bot.dto.request.UserCreateRequest;
 import ru.cs.vsu.social_network.telegram_bot.dto.request.UserUpdateRequest;
 import ru.cs.vsu.social_network.telegram_bot.dto.response.*;
 import ru.cs.vsu.social_network.telegram_bot.entity.User;
+import ru.cs.vsu.social_network.telegram_bot.entity.UserTraining;
 import ru.cs.vsu.social_network.telegram_bot.entity.Visit;
 import ru.cs.vsu.social_network.telegram_bot.entity.VisitorLog;
 
@@ -42,6 +44,7 @@ public class ModelMapperConfig {
         configureUserMappings(modelMapper);
         configureVisitMappings(modelMapper);
         configureVisitorLogMappings(modelMapper);
+        configureUserTrainingMappings(modelMapper);
 
         modelMapper.getConfiguration()
                 .setFieldMatchingEnabled(true)
@@ -186,5 +189,70 @@ public class ModelMapperConfig {
                 skip(destination.getRawData());
             }
         });
+    }
+
+    /**
+     * Настраивает маппинг для сущности UserTraining и связанных DTO.
+     * Определяет правила преобразования между UserTraining, UserBenchPressRequest и UserTrainingResponse.
+     * Добавлено для поддержки функционала тренировочных программ.
+     *
+     * @param modelMapper экземпляр ModelMapper для настройки
+     */
+    private void configureUserTrainingMappings(ModelMapper modelMapper) {
+        log.info("MODEL_MAPPER_КОНФИГУРАЦИЯ_USER_TRAINING: настройка маппинга UserTraining");
+
+        modelMapper.addMappings(new PropertyMap<UserTraining, UserTrainingResponse>() {
+            @Override
+            protected void configure() {
+                log.debug("MODEL_MAPPER_USER_TRAINING_TO_RESPONSE: н" +
+                        "астройка маппинга UserTraining -> UserTrainingResponse");
+
+                map().setId(source.getId());
+                map().setUserId(source.getUser().getId());
+                map().setMaxBenchPress(source.getMaxBenchPress());
+                map().setTrainingCycle(source.getTrainingCycle());
+                map().setCreatedAt(source.getCreatedAt());
+                map().setUpdatedAt(source.getUpdatedAt());
+
+                log.debug("MODEL_MAPPER_USER_TRAINING_TO_RESPONSE_УСПЕХ: маппинг настроен");
+            }
+        });
+
+        modelMapper.addMappings(new PropertyMap<UserBenchPressRequest, UserTraining>() {
+            @Override
+            protected void configure() {
+                log.debug("MODEL_MAPPER_BENCH_PRESS_TO_USER_TRAINING: " +
+                        "настройка маппинга UserBenchPressRequest -> UserTraining");
+
+                map().setMaxBenchPress(source.getMaxBenchPress());
+                skip(destination.getUser());
+                skip(destination.getLastTrainingDate());
+                skip(destination.getTrainingCycle());
+                skip(destination.getId());
+                skip(destination.getCreatedAt());
+                skip(destination.getUpdatedAt());
+
+                log.debug("MODEL_MAPPER_BENCH_PRESS_TO_USER_TRAINING_УСПЕХ: маппинг настроен");
+            }
+        });
+
+        modelMapper.addMappings(new PropertyMap<UserTrainingResponse, UserTraining>() {
+            @Override
+            protected void configure() {
+                log.debug("MODEL_MAPPER_RESPONSE_TO_USER_TRAINING: " +
+                        "настройка маппинга UserTrainingResponse -> UserTraining");
+
+                map().setId(source.getId());
+                map().setMaxBenchPress(source.getMaxBenchPress());
+                map().setTrainingCycle(source.getTrainingCycle());
+                skip(destination.getUser());
+                skip(destination.getCreatedAt());
+                skip(destination.getUpdatedAt());
+
+                log.debug("MODEL_MAPPER_RESPONSE_TO_USER_TRAINING_УСПЕХ: маппинг настроен");
+            }
+        });
+
+        log.info("MODEL_MAPPER_КОНФИГУРАЦИЯ_USER_TRAINING_УСПЕХ: все маппинги настроены");
     }
 }

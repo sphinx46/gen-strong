@@ -115,4 +115,22 @@ public interface TelegramCommandService {
      * @return текст справки
      */
     String handleHelpCommand(Long telegramId);
+
+    /**
+     * Обрабатывает команду создания программы тренировок.
+     * Устанавливает состояние ожидания ввода максимального жима лежа.
+     *
+     * @param telegramId Telegram ID пользователя
+     * @return запрос на ввод максимального жима лежа
+     */
+    String handleTrainingProgramCommand(Long telegramId);
+
+    /**
+     * Обрабатывает ввод максимального жима лежа и генерирует программу тренировок.
+     *
+     * @param telegramId      Telegram ID пользователя
+     * @param benchPressInput введенное значение жима лежа
+     * @return сообщение о результате генерации программы
+     */
+    String handleBenchPressInput(Long telegramId, String benchPressInput);
 }

@@ -30,7 +30,6 @@
         <java.version>21</java.version>
         <springdoc.version>2.3.0</springdoc.version>
         <org.telegrambots.version>6.9.7.1</org.telegrambots.version>
-        <telegrambots-longpolling.version>9.2.0</telegrambots-longpolling.version>
         <spring-security-web.version>7.0.0</spring-security-web.version>
         <modelmapper.version>3.2.0</modelmapper.version>
         <testcontainers.version>1.19.7</testcontainers.version>
@@ -104,11 +103,6 @@
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots</artifactId>
             <version>${org.telegrambots.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.telegram</groupId>
-            <artifactId>telegrambots-longpolling</artifactId>
-            <version>${telegrambots-longpolling.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

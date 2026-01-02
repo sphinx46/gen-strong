@@ -1,5 +1,7 @@
 package ru.cs.vsu.social_network.telegram_bot.service;
 
+import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException;
+
 /**
  * Сервис для обработки команд Telegram бота тренажерного зала.
  * Управляет входящими командами, состояниями пользователей и формированием ответов.
@@ -133,4 +135,20 @@ public interface TelegramCommandService {
      * @return сообщение о результате генерации программы
      */
     String handleBenchPressInput(Long telegramId, String benchPressInput);
+
+    /**
+     * Обрабатывает выбор формата программы тренировок пользователем.
+     * После получения максимального жима лежа пользователь выбирает,
+     * в каком формате ему предоставить программу тренировок:
+     * изображение или Excel таблица.
+     *
+     * @param telegramId уникальный идентификатор пользователя в Telegram
+     * @param formatChoice выбранный пользователем формат программы тренировок.
+     *                    Поддерживаются следующие варианты:
+     *                    - "Изображение", "Картинка", "1" - для генерации изображения
+     *                    - "Excel", "Таблица", "2" - для генерации Excel файла
+     * @return текстовый ответ пользователю о результате выбора формата
+     * @throws GenerateTrainingPlanException если не удалось сгенерировать программу
+     */
+    String handleFormatSelection(final Long telegramId, final String formatChoice);
 }

@@ -23,6 +23,9 @@ public class DocumentSenderServiceImpl implements DocumentSenderService {
         this.applicationContext = applicationContext;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void sendDocument(final Long telegramId,
                              final File file,

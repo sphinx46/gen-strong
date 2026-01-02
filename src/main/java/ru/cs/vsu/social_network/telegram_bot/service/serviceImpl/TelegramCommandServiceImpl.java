@@ -294,13 +294,10 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
             File trainingFile = null;
             String formatType = "";
 
-            String normalizedChoice = formatChoice.trim().toLowerCase();
+            String trimmedChoice = formatChoice.trim();
 
-            if ("1".equals(normalizedChoice) || "изображение".equals(normalizedChoice) ||
-                    "картинка".equals(normalizedChoice) || "image".equals(normalizedChoice) ||
-                    "img".equals(normalizedChoice)) {
-
-                log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {}",
+            if ("1".equals(trimmedChoice)) {
+                log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '1' - изображение",
                         SERVICE_NAME, telegramId);
 
                 trainingFile = imageTrainingService.generateTrainingPlanImage(user.getId(), benchPressRequest);
@@ -309,10 +306,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 log.info("{}_IMAGE_GENERATION_SUCCESS: файл создан: {}",
                         SERVICE_NAME, trainingFile.getAbsolutePath());
 
-            } else if ("2".equals(normalizedChoice) || "excel".equals(normalizedChoice) ||
-                    "таблица".equals(normalizedChoice) || "exl".equals(normalizedChoice)) {
-
-                log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {}",
+            } else if ("2".equals(trimmedChoice)) {
+                log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '2' - Excel",
                         SERVICE_NAME, telegramId);
 
                 trainingFile = excelTrainingService.generateTrainingPlan(user.getId(), benchPressRequest);
@@ -322,12 +317,43 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                         SERVICE_NAME, trainingFile.getAbsolutePath());
 
             } else {
-                log.warn("{}_FORMAT_SELECTION_UNKNOWN: неизвестный формат '{}'",
-                        SERVICE_NAME, formatChoice);
-                return "Пожалуйста, выберите корректный формат:\n\n" +
-                        "1. Изображение (рекомендуется для Telegram)\n" +
-                        "2. Excel таблица (для компьютера)\n\n" +
-                        "Введите '1' или '2'";
+                String normalizedChoice = trimmedChoice.toLowerCase();
+
+                if ("изображение".equals(normalizedChoice) ||
+                        "картинка".equals(normalizedChoice) ||
+                        "image".equals(normalizedChoice) ||
+                        "img".equals(normalizedChoice)) {
+
+                    log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '{}' - изображение",
+                            SERVICE_NAME, telegramId, formatChoice);
+
+                    trainingFile = imageTrainingService.generateTrainingPlanImage(user.getId(), benchPressRequest);
+                    formatType = "изображение";
+
+                    log.info("{}_IMAGE_GENERATION_SUCCESS: файл создан: {}",
+                            SERVICE_NAME, trainingFile.getAbsolutePath());
+
+                } else if ("excel".equals(normalizedChoice) ||
+                        "таблица".equals(normalizedChoice) ||
+                        "exl".equals(normalizedChoice)) {
+
+                    log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '{}' - Excel",
+                            SERVICE_NAME, telegramId, formatChoice);
+
+                    trainingFile = excelTrainingService.generateTrainingPlan(user.getId(), benchPressRequest);
+                    formatType = "Excel таблица";
+
+                    log.info("{}_EXCEL_GENERATION_SUCCESS: файл создан: {}",
+                            SERVICE_NAME, trainingFile.getAbsolutePath());
+
+                } else {
+                    log.warn("{}_FORMAT_SELECTION_UNKNOWN: неизвестный формат '{}'",
+                            SERVICE_NAME, formatChoice);
+                    return "Пожалуйста, выберите корректный формат:\n\n" +
+                            "1. Изображение (рекомендуется для Telegram)\n" +
+                            "2. Excel таблица (для компьютера)\n\n" +
+                            "Введите '1' или '2'";
+                }
             }
 
             final String caption = buildTrainingProgramCaption(user, benchPressValue, formatType);

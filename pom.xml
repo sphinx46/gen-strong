@@ -36,6 +36,7 @@
         <poi.version>5.5.1</poi.version>
         <xmlbeans.version>5.2.0</xmlbeans.version>
         <commons-compress.version>1.26.2</commons-compress.version>
+        <common-imaging.version>1.0.0-alpha6</common-imaging.version>
     </properties>
     <dependencies>
         <dependency>
@@ -68,6 +69,11 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-imaging</artifactId>
+            <version>${common-imaging.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>

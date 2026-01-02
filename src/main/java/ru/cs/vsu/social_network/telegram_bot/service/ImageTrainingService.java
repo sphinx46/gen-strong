@@ -7,31 +7,25 @@ import java.io.File;
 import java.util.UUID;
 
 /**
- * Сервис для генерации изображений с тренировочными программами.
- * Конвертирует Excel файлы в изображения (альтернатива Excel документам).
+ * Сервис для генерации изображений тренировочных планов из Excel файлов.
  */
 public interface ImageTrainingService {
 
     /**
-     * Генерирует изображение с индивидуальной программой тренировок.
-     * Создает Excel файл на основе шаблона, конвертирует его в изображение
-     * и сохраняет результат в файл.
+     * Генерирует изображение тренировочного плана на основе данных пользователя.
      *
      * @param userId идентификатор пользователя
-     * @param userBenchPressRequest запрос с максимальным жимом лежа
-     * @return сгенерированное изображение с программой тренировок
-     * @throws ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException если не удалось сгенерировать изображение
+     * @param userBenchPressRequest данные о жиме лежа пользователя
+     * @return файл с изображением тренировочного плана
      */
     File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest);
 
     /**
      * Конвертирует Excel файл в изображение.
-     * Поддерживает различные форматы вывода (PNG, JPEG).
      *
-     * @param excelFile исходный Excel файл
-     * @param outputFormat формат выходного изображения (PNG, JPEG)
-     * @return объект BufferedImage с изображением
-     * @throws ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException если не удалось конвертировать файл
+     * @param excelFile Excel файл для конвертации
+     * @param outputFormat формат выходного изображения
+     * @return изображение с содержимым Excel файла
      */
     BufferedImage convertExcelToImage(File excelFile, String outputFormat);
 }

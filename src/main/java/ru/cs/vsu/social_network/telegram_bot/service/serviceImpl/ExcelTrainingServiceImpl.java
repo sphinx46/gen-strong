@@ -2,8 +2,6 @@ package ru.cs.vsu.social_network.telegram_bot.service.serviceImpl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -11,6 +9,7 @@ import ru.cs.vsu.social_network.telegram_bot.dto.request.UserBenchPressRequest;
 import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException;
 import ru.cs.vsu.social_network.telegram_bot.provider.UserTrainingEntityProvider;
 import ru.cs.vsu.social_network.telegram_bot.service.ExcelTrainingService;
+import ru.cs.vsu.social_network.telegram_bot.utils.ExcelUtils;
 import ru.cs.vsu.social_network.telegram_bot.utils.MessageConstants;
 
 import java.io.File;
@@ -24,6 +23,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Реализация сервиса для генерации Excel файлов тренировочных планов.
+ * Использует шаблоны Excel для создания персонализированных планов тренировок.
+ */
 @Slf4j
 @Service
 public class ExcelTrainingServiceImpl implements ExcelTrainingService {
@@ -36,10 +39,16 @@ public class ExcelTrainingServiceImpl implements ExcelTrainingService {
 
     private final UserTrainingEntityProvider userTrainingEntityProvider;
 
+    /**
+     * Конструктор для внедрения зависимости провайдера данных пользователя.
+     *
+     * @param userTrainingEntityProvider провайдер данных тренировок пользователя
+     */
     public ExcelTrainingServiceImpl(UserTrainingEntityProvider userTrainingEntityProvider) {
         this.userTrainingEntityProvider = userTrainingEntityProvider;
     }
 
+    /** {@inheritDoc} */
     @Override
     public File generateTrainingPlan(UUID userId, UserBenchPressRequest userBenchPressRequest) {
         log.info("EXCEL_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {}, жим лежа: {} кг",
@@ -75,112 +84,28 @@ public class ExcelTrainingServiceImpl implements ExcelTrainingService {
 
             ClassPathResource resource = new ClassPathResource(templatePath);
 
-            log.info("{}_ШАБЛОН_СУЩЕСТВУЕТ: {}", logPrefix, resource.exists());
-            log.info("{}_ШАБЛОН_ПУТЬ: {}", logPrefix, resource.getPath());
-            log.info("{}_ШАБЛОН_ОПИСАНИЕ: {}", logPrefix, resource.getDescription());
-
-            if (!resource.exists()) {
-                log.error("{}_ШАБЛОН_НЕ_НАЙДЕН: {}", logPrefix, templatePath);
-                try {
-                    log.error("{}_ШАБЛОН_ПОЛНЫЙ_ПУТЬ: {}", logPrefix, resource.getURL());
-                } catch (Exception urlEx) {
-                    log.error("{}_ШАБЛОН_URL_ОШИБКА: {}", logPrefix, urlEx.getMessage());
-                }
-                throw new GenerateTrainingPlanException("Шаблон тренировочного плана не найден: " + templatePath);
-            }
-
-            try {
-                long fileSize = resource.contentLength();
-                log.info("{}_ШАБЛОН_РАЗМЕР: {} байт", logPrefix, fileSize);
-
-                if (fileSize == 0) {
-                    log.error("{}_ШАБЛОН_ПУСТОЙ: файл имеет размер 0 байт", logPrefix);
-                    throw new GenerateTrainingPlanException("Файл шаблона пустой");
-                }
-            } catch (Exception sizeEx) {
-                log.warn("{}_ШАБЛОН_РАЗМЕР_ОШИБКА: не удалось определить размер файла: {}",
-                        logPrefix, sizeEx.getMessage());
-            }
+            validateTemplateResource(resource, logPrefix);
 
             log.info("{}_ДИРЕКТОРИЯ_СОЗДАНИЕ: {}", logPrefix, outputDirPath);
-            Path outputDir = Paths.get(outputDirPath);
-            if (!Files.exists(outputDir)) {
-                Files.createDirectories(outputDir);
-                log.info("{}_ДИРЕКТОРИЯ_СОЗДАНА: {}", logPrefix, outputDir.toAbsolutePath());
-            }
+            Path outputDir = createOutputDirectory(outputDirPath, logPrefix);
 
             log.info("{}_EXCEL_ОТКРЫТИЕ: начало чтения шаблона", logPrefix);
 
             try (InputStream inputStream = resource.getInputStream()) {
-
-                log.info("{}_EXCEL_ТИП_ФАЙЛА: определение типа файла по расширению '{}'",
-                        logPrefix, templatePath);
-
-                Workbook workbook;
-                if (templatePath.toLowerCase().endsWith(".xlsx")) {
-                    log.info("{}_EXCEL_ФОРМАТ: XLSX (Excel 2007+)", logPrefix);
-                    workbook = new XSSFWorkbook(inputStream);
-                } else if (templatePath.toLowerCase().endsWith(".xls")) {
-                    log.info("{}_EXCEL_ФОРМАТ: XLS (Excel 97-2003)", logPrefix);
-                    workbook = new HSSFWorkbook(inputStream);
-                } else {
-                    log.error("{}_EXCEL_НЕПОДДЕРЖИВАЕМЫЙ_ФОРМАТ: {}", logPrefix, templatePath);
-                    throw new GenerateTrainingPlanException(
-                            "Неподдерживаемый формат файла. Используйте .xls или .xlsx");
-                }
+                Workbook workbook = ExcelUtils.createWorkbook(new File(templatePath), inputStream);
 
                 log.info("{}_EXCEL_ШАБЛОН_ПРОЧИТАН: листов в книге {}", logPrefix,
                         workbook.getNumberOfSheets());
 
-                if (workbook.getNumberOfSheets() == 0) {
-                    log.error("{}_EXCEL_ПУСТАЯ_КНИГА: нет ни одного листа", logPrefix);
-                    workbook.close();
-                    throw new GenerateTrainingPlanException("Excel файл не содержит листов");
-                }
+                Sheet sheet = ExcelUtils.getFirstSheet(workbook);
 
-                Sheet sheet = workbook.getSheetAt(0);
-                if (sheet == null) {
-                    log.error("{}_EXCEL_ПЕРВЫЙ_ЛИСТ_НЕ_НАЙДЕН", logPrefix);
-                    workbook.close();
-                    throw new GenerateTrainingPlanException("Первый лист не найден в Excel файле");
-                }
+                writeBenchPressValue(sheet, userBenchPressRequest.getMaxBenchPress(), logPrefix);
 
-                log.info("{}_ДАННЫЕ_ЗАПИСЬ: максимальный жим лежа {} кг в ячейку B2",
-                        logPrefix, userBenchPressRequest.getMaxBenchPress());
+                recalculateFormulas(workbook, logPrefix);
 
-                int baseRow = 2;
-                Row row = sheet.getRow(baseRow);
-                if (row == null) {
-                    row = sheet.createRow(baseRow);
-                    log.info("{}_СОЗДАНА_НОВАЯ_СТРОКА: {}", logPrefix, baseRow);
-                }
+                Path outputPath = createOutputFilePath(userId, outputDir, logPrefix);
 
-                int baseColumn = 1;
-                Cell cell = row.getCell(baseColumn);
-                if (cell == null) {
-                    cell = row.createCell(baseColumn);
-                    log.info("{}_СОЗДАНА_НОВАЯ_ЯЧЕЙКА: строка {}, колонка {}",
-                            logPrefix, baseRow, baseColumn);
-                }
-
-                cell.setCellValue(userBenchPressRequest.getMaxBenchPress());
-                log.info("{}_ДАННЫЕ_ЗАПИСАНЫ: значение {} кг записано в ячейку B{}",
-                        logPrefix, userBenchPressRequest.getMaxBenchPress(), baseRow + 1);
-
-                log.info("{}_ФОРМУЛЫ_ПЕРЕСЧЕТ: начало вычисления формул", logPrefix);
-                FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-                evaluator.evaluateAll();
-                log.info("{}_ФОРМУЛЫ_ПЕРЕСЧЕТ_ЗАВЕРШЕН", logPrefix);
-
-                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-                String filename = String.format("training_plan_%s_%s.xlsx", userId, timestamp);
-                Path outputPath = outputDir.resolve(filename);
-
-                log.info("{}_ФАЙЛ_СОЗДАНИЕ: {}", logPrefix, outputPath.toAbsolutePath());
-
-                try (FileOutputStream fileOut = new FileOutputStream(outputPath.toFile())) {
-                    workbook.write(fileOut);
-                }
+                saveWorkbookToFile(workbook, outputPath, logPrefix);
 
                 workbook.close();
 
@@ -206,6 +131,132 @@ public class ExcelTrainingServiceImpl implements ExcelTrainingService {
             log.error("EXCEL_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: пользователь {}, ошибка: {}",
                     userId, e.getMessage(), e);
             throw new GenerateTrainingPlanException(MessageConstants.GENERATE_PLAN_FAILURE);
+        }
+    }
+
+    /**
+     * Проверяет доступность ресурса шаблона.
+     *
+     * @param resource ресурс шаблона
+     * @param logPrefix префикс для логирования
+     * @throws GenerateTrainingPlanException если ресурс недоступен
+     */
+    private void validateTemplateResource(ClassPathResource resource, String logPrefix) {
+        if (!resource.exists()) {
+            log.error("{}_ШАБЛОН_НЕ_НАЙДЕН: {}", logPrefix, templatePath);
+            try {
+                log.error("{}_ШАБЛОН_ПОЛНЫЙ_ПУТЬ: {}", logPrefix, resource.getURL());
+            } catch (Exception urlEx) {
+                log.error("{}_ШАБЛОН_URL_ОШИБКА: {}", logPrefix, urlEx.getMessage());
+            }
+            throw new GenerateTrainingPlanException("Шаблон тренировочного плана не найден: " + templatePath);
+        }
+
+        try {
+            long fileSize = resource.contentLength();
+            log.info("{}_ШАБЛОН_РАЗМЕР: {} байт", logPrefix, fileSize);
+
+            if (fileSize == 0) {
+                log.error("{}_ШАБЛОН_ПУСТОЙ: файл имеет размер 0 байт", logPrefix);
+                throw new GenerateTrainingPlanException("Файл шаблона пустой");
+            }
+        } catch (Exception sizeEx) {
+            log.warn("{}_ШАБЛОН_РАЗМЕР_ОШИБКА: не удалось определить размер файла: {}",
+                    logPrefix, sizeEx.getMessage());
+        }
+    }
+
+    /**
+     * Создает выходную директорию если она не существует.
+     *
+     * @param outputDirPath путь к директории
+     * @param logPrefix префикс для логирования
+     * @return путь к созданной директории
+     * @throws Exception если не удалось создать директорию
+     */
+    private Path createOutputDirectory(String outputDirPath, String logPrefix) throws Exception {
+        Path outputDir = Paths.get(outputDirPath);
+        if (!Files.exists(outputDir)) {
+            Files.createDirectories(outputDir);
+            log.info("{}_ДИРЕКТОРИЯ_СОЗДАНА: {}", logPrefix, outputDir.toAbsolutePath());
+        }
+        return outputDir;
+    }
+
+    /**
+     * Записывает значение жима лежа в ячейку шаблона.
+     *
+     * @param sheet лист Excel
+     * @param benchPressValue значение жима лежа
+     * @param logPrefix префикс для логирования
+     */
+    private void writeBenchPressValue(Sheet sheet, double benchPressValue, String logPrefix) {
+        log.info("{}_ДАННЫЕ_ЗАПИСЬ: максимальный жим лежа {} кг в ячейку B2",
+                logPrefix, benchPressValue);
+
+        int baseRow = 2;
+        int baseColumn = 1;
+
+        Row row = sheet.getRow(baseRow);
+        if (row == null) {
+            row = sheet.createRow(baseRow);
+            log.info("{}_СОЗДАНА_НОВАЯ_СТРОКА: {}", logPrefix, baseRow);
+        }
+
+        Cell cell = row.getCell(baseColumn);
+        if (cell == null) {
+            cell = row.createCell(baseColumn);
+            log.info("{}_СОЗДАНА_НОВАЯ_ЯЧЕЙКА: строка {}, колонка {}",
+                    logPrefix, baseRow, baseColumn);
+        }
+
+        cell.setCellValue(benchPressValue);
+        log.info("{}_ДАННЫЕ_ЗАПИСАНЫ: значение {} кг записано в ячейку B{}",
+                logPrefix, benchPressValue, baseRow + 1);
+    }
+
+    /**
+     * Пересчитывает формулы в книге Excel.
+     *
+     * @param workbook книга Excel
+     * @param logPrefix префикс для логирования
+     */
+    private void recalculateFormulas(Workbook workbook, String logPrefix) {
+        log.info("{}_ФОРМУЛЫ_ПЕРЕСЧЕТ: начало вычисления формул", logPrefix);
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        evaluator.evaluateAll();
+        log.info("{}_ФОРМУЛЫ_ПЕРЕСЧЕТ_ЗАВЕРШЕН", logPrefix);
+    }
+
+    /**
+     * Создает путь для выходного файла.
+     *
+     * @param userId идентификатор пользователя
+     * @param outputDir выходная директория
+     * @param logPrefix префикс для логирования
+     * @return путь к выходному файлу
+     */
+    private Path createOutputFilePath(UUID userId, Path outputDir, String logPrefix) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String filename = String.format("training_plan_%s_%s.xlsx", userId, timestamp);
+        Path outputPath = outputDir.resolve(filename);
+
+        log.info("{}_ФАЙЛ_СОЗДАНИЕ: {}", logPrefix, outputPath.toAbsolutePath());
+        return outputPath;
+    }
+
+    /**
+     * Сохраняет книгу Excel в файл.
+     *
+     * @param workbook книга Excel
+     * @param outputPath путь к выходному файлу
+     * @param logPrefix префикс для логирования
+     * @throws Exception если не удалось сохранить файл
+     */
+    private void saveWorkbookToFile(Workbook workbook, Path outputPath, String logPrefix) throws Exception {
+        try (FileOutputStream fileOut = new FileOutputStream(outputPath.toFile())) {
+            workbook.write(fileOut);
+            log.info("{}_ФАЙЛ_СОХРАНЕН: {}", logPrefix, outputPath.toAbsolutePath());
         }
     }
 }

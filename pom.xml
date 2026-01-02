@@ -34,7 +34,7 @@
         <spring-security-web.version>7.0.0</spring-security-web.version>
         <modelmapper.version>3.2.0</modelmapper.version>
         <testcontainers.version>1.19.7</testcontainers.version>
-        <poi.version>5.3.0</poi.version>
+        <poi.version>5.5.1</poi.version>
         <xmlbeans.version>5.2.0</xmlbeans.version>
         <commons-compress.version>1.26.2</commons-compress.version>
     </properties>

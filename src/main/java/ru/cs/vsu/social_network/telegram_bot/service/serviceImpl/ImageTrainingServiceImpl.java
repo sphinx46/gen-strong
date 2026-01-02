@@ -512,33 +512,34 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         int maxCellWidth = minColumnWidth;
         Font tempFont = new Font("Arial", Font.PLAIN, cellFontSize);
 
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice gd = ge.getDefaultScreenDevice();
-        GraphicsConfiguration gc = gd.getDefaultConfiguration();
-        BufferedImage tempImage = gc.createCompatibleImage(1, 1);
+        try {
+            BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            Graphics2D tempGraphics = tempImage.createGraphics();
+            tempGraphics.setFont(tempFont);
+            FontMetrics metrics = tempGraphics.getFontMetrics();
 
-        Graphics2D tempGraphics = tempImage.createGraphics();
-        tempGraphics.setFont(tempFont);
-        FontMetrics metrics = tempGraphics.getFontMetrics();
+            int rowsToAnalyze = Math.min(rowCount, 10);
 
-        int rowsToAnalyze = Math.min(rowCount, 10);
-
-        for (int i = 0; i < rowsToAnalyze; i++) {
-            Row row = sheet.getRow(i);
-            if (row != null) {
-                for (int j = 0; j < columnCount; j++) {
-                    Cell cell = row.getCell(j);
-                    String cellValue = getCellValueAsString(cell);
-                    if (cellValue != null && !cellValue.isEmpty()) {
-                        int textWidth = metrics.stringWidth(cellValue);
-                        maxCellWidth = Math.max(maxCellWidth, textWidth + 20);
+            for (int i = 0; i < rowsToAnalyze; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    for (int j = 0; j < columnCount; j++) {
+                        Cell cell = row.getCell(j);
+                        String cellValue = getCellValueAsString(cell);
+                        if (cellValue != null && !cellValue.isEmpty()) {
+                            int textWidth = metrics.stringWidth(cellValue);
+                            maxCellWidth = Math.max(maxCellWidth, textWidth + 20);
+                        }
                     }
                 }
             }
-        }
 
-        tempGraphics.dispose();
-        tempImage.flush();
+            tempGraphics.dispose();
+        } catch (Exception e) {
+            log.warn("Не удалось рассчитать оптимальную ширину столбцов, используется значение по умолчанию: {}",
+                    e.getMessage());
+            return minColumnWidth;
+        }
 
         return Math.min(maxCellWidth, 150);
     }
@@ -550,9 +551,20 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
      */
     private void configureGraphicsQuality(Graphics2D graphics) {
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        } catch (Exception e) {
+            log.warn("Не удалось установить сглаживание текста: {}", e.getMessage());
+        }
+
         graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        } catch (Exception e) {
+            log.warn("Не удалось установить дробные метрики: {}", e.getMessage());
+        }
     }
 
     /**

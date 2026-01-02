@@ -260,8 +260,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         final String userState = userStates.get(telegramId);
 
         if (!"awaiting_format_selection".equals(userState)) {
-            log.warn("{}_FORMAT_SELECTION_UNEXPECTED: Telegram ID {} не ожидает выбора формата",
-                    SERVICE_NAME, telegramId);
+            log.warn("{}_FORMAT_SELECTION_UNEXPECTED: Telegram ID {} не ожидает выбора формата. Текущий статус: {}",
+                    SERVICE_NAME, telegramId, userState);
             return handleUnknownCommand(telegramId);
         }
 
@@ -296,7 +296,10 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
             String trimmedChoice = formatChoice.trim();
 
-            if ("1".equals(trimmedChoice)) {
+            log.info("{}_FORMAT_SELECTION_CHOICE: получен выбор '{}', trimmed: '{}'",
+                    SERVICE_NAME, formatChoice, trimmedChoice);
+
+            if ("1".equals(trimmedChoice) || "один".equalsIgnoreCase(trimmedChoice)) {
                 log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '1' - изображение",
                         SERVICE_NAME, telegramId);
 
@@ -306,7 +309,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 log.info("{}_IMAGE_GENERATION_SUCCESS: файл создан: {}",
                         SERVICE_NAME, trainingFile.getAbsolutePath());
 
-            } else if ("2".equals(trimmedChoice)) {
+            } else if ("2".equals(trimmedChoice) || "два".equalsIgnoreCase(trimmedChoice)) {
                 log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '2' - Excel",
                         SERVICE_NAME, telegramId);
 
@@ -322,7 +325,8 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                 if ("изображение".equals(normalizedChoice) ||
                         "картинка".equals(normalizedChoice) ||
                         "image".equals(normalizedChoice) ||
-                        "img".equals(normalizedChoice)) {
+                        "img".equals(normalizedChoice) ||
+                        "фото".equals(normalizedChoice)) {
 
                     log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '{}' - изображение",
                             SERVICE_NAME, telegramId, formatChoice);
@@ -335,7 +339,9 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
                 } else if ("excel".equals(normalizedChoice) ||
                         "таблица".equals(normalizedChoice) ||
-                        "exl".equals(normalizedChoice)) {
+                        "exl".equals(normalizedChoice) ||
+                        "эксэль".equals(normalizedChoice) ||
+                        "эксель".equals(normalizedChoice)) {
 
                     log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '{}' - Excel",
                             SERVICE_NAME, telegramId, formatChoice);
@@ -347,12 +353,12 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
                             SERVICE_NAME, trainingFile.getAbsolutePath());
 
                 } else {
-                    log.warn("{}_FORMAT_SELECTION_UNKNOWN: неизвестный формат '{}'",
-                            SERVICE_NAME, formatChoice);
+                    log.warn("{}_FORMAT_SELECTION_UNKNOWN: неизвестный формат '{}' (trimmed: '{}')",
+                            SERVICE_NAME, formatChoice, trimmedChoice);
                     return "Пожалуйста, выберите корректный формат:\n\n" +
-                            "1. Изображение (рекомендуется для Telegram)\n" +
-                            "2. Excel таблица (для компьютера)\n\n" +
-                            "Введите '1' или '2'";
+                            "1️⃣ *Изображение* (рекомендуется для Telegram)\n" +
+                            "2️⃣ *Excel таблица* (для компьютера)\n\n" +
+                            "📝 Введите '1' или '2'";
                 }
             }
 

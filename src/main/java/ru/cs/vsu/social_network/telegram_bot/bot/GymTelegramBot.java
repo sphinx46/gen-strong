@@ -94,9 +94,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                                   final String text,
                                   final Message message) {
 
+        log.debug("{}_ПРОЦЕСС_СООБЩЕНИЯ_НАЧАЛО: текст '{}', telegramId {}", BOT_NAME, text, telegramId);
+
         if (text.startsWith("/")) {
             return processCommand(telegramId, text, message);
-        } else if ("Я в зале".equalsIgnoreCase(text)) {
+        }
+
+        if ("Я в зале".equalsIgnoreCase(text)) {
             return telegramCommandService.handleInGymCommand(telegramId);
         } else if ("Сменить имя".equalsIgnoreCase(text)) {
             return telegramCommandService.handleChangeNameCommand(telegramId);
@@ -104,14 +108,32 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return telegramCommandService.handleTrainingProgramCommand(telegramId);
         } else if (text.startsWith("Получить журнал")) {
             return telegramCommandService.handleAdminMenuCommand(telegramId, text);
-        } else if (isDateInput(text)) {
-            return telegramCommandService.handleAdminDateInput(telegramId, text);
-        } else if (isBenchPressInput(text)) {
-            return telegramCommandService.handleBenchPressInput(telegramId, text);
-        } else if (isFormatSelection(text)) {
-            return telegramCommandService.handleFormatSelection(telegramId, text);
-        } else {
-            return telegramCommandService.handleDisplayNameInput(telegramId, text);
+        }
+
+        try {
+            String processedText = text.trim();
+
+            if (isDateInput(processedText)) {
+                return telegramCommandService.handleAdminDateInput(telegramId, processedText);
+            }
+
+            if (isFormatSelection(processedText)) {
+                log.debug("{}_ФОРМАТ_ВЫБОРА_ОБНАРУЖЕН: '{}'", BOT_NAME, processedText);
+                return telegramCommandService.handleFormatSelection(telegramId, processedText);
+            }
+
+            if (isBenchPressInput(processedText)) {
+                log.debug("{}_ЖИМ_ЛЕЖА_ВВОД_ОБНАРУЖЕН: '{}'", BOT_NAME, processedText);
+                return telegramCommandService.handleBenchPressInput(telegramId, processedText);
+            }
+
+            log.debug("{}_ИМЯ_ВВОД_ОБНАРУЖЕН: '{}'", BOT_NAME, processedText);
+            return telegramCommandService.handleDisplayNameInput(telegramId, processedText);
+
+        } catch (Exception e) {
+            log.error("{}_ОБРАБОТКА_ОШИБКА_ДЕТАЛЬ: ошибка при обработке сообщения '{}' от {}: {}",
+                    BOT_NAME, text, telegramId, e.getMessage(), e);
+            return telegramCommandService.handleUnknownCommand(telegramId);
         }
     }
 
@@ -129,18 +151,37 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     private boolean isBenchPressInput(String text) {
-        return BENCH_PRESS_PATTERN.matcher(text.trim()).matches();
+        String trimmed = text.trim();
+
+        if ("1".equals(trimmed) || "2".equals(trimmed)) {
+            return false;
+        }
+
+        return BENCH_PRESS_PATTERN.matcher(trimmed).matches();
     }
 
     private boolean isFormatSelection(String text) {
-        String lowerText = text.trim().toLowerCase();
+        String trimmed = text.trim();
+        String lowerText = trimmed.toLowerCase();
+
+        if ("1".equals(trimmed) || "2".equals(trimmed)) {
+            return true;
+        }
+
         return "изображение".equals(lowerText) ||
                 "картинка".equals(lowerText) ||
+                "image".equals(lowerText) ||
+                "img".equals(lowerText) ||
+                "фото".equals(lowerText) ||
+                "один".equals(lowerText) ||
                 "excel".equals(lowerText) ||
                 "таблица".equals(lowerText) ||
-                "1".equals(text.trim()) ||
-                "2".equals(text.trim());
+                "exl".equals(lowerText) ||
+                "эксэль".equals(lowerText) ||
+                "эксель".equals(lowerText) ||
+                "два".equals(lowerText);
     }
+
 
     private String processCommand(final Long telegramId,
                                   final String commandText,

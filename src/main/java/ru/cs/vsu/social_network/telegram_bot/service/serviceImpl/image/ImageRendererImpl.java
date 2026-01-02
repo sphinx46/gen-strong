@@ -84,7 +84,7 @@ public class ImageRendererImpl implements ImageRenderer {
     public void drawImageContent(Graphics2D graphics, Sheet sheet, int columnCount, int rowCount,
                                  int imageHeight, int imageWidth, int columnWidth,
                                  List<Integer> columnIndices, List<Integer> rowIndices) {
-        log.debug("РИСОВАНИЕ_КОНТЕНТА_НАЧАЛО размер {}x{} столбцов {} строк {}",
+        log.debug("РИСОВАНИЕ_КОНТЕНТА_НАЧАЛО: размер {}x{} столбцов {} строк {}",
                 imageWidth, imageHeight, columnCount, rowCount);
 
         graphics.setColor(backgroundColor);
@@ -100,7 +100,7 @@ public class ImageRendererImpl implements ImageRenderer {
     /** {@inheritDoc} */
     @Override
     public void drawHeader(Graphics2D graphics, int imageWidth) {
-        log.debug("РИСОВАНИЕ_ЗАГОЛОВКА ширина {}", imageWidth);
+        log.debug("РИСОВАНИЕ_ЗАГОЛОВКА: ширина {}", imageWidth);
 
         graphics.setColor(headerColor);
         graphics.fillRect(0, 0, imageWidth, headerHeight);
@@ -119,7 +119,7 @@ public class ImageRendererImpl implements ImageRenderer {
     @Override
     public void drawTable(Graphics2D graphics, Sheet sheet, int columnCount, int rowCount,
                           int imageWidth, int columnWidth, List<Integer> columnIndices, List<Integer> rowIndices) {
-        log.debug("РИСОВАНИЕ_ТАБЛИЦЫ столбцов {} строк {}", columnCount, rowCount);
+        log.debug("РИСОВАНИЕ_ТАБЛИЦЫ: столбцов {} строк {}", columnCount, rowCount);
 
         int tableWidth = columnWidth * columnCount;
         int tableStartY = headerHeight + padding;
@@ -127,7 +127,7 @@ public class ImageRendererImpl implements ImageRenderer {
 
         if (tableWidth + (2 * padding) > imageWidth) {
             tableStartX = (imageWidth - tableWidth) / 2;
-            log.debug("РИСОВАНИЕ_ТАБЛИЦЫ_ЦЕНТРИРОВАНИЕ смещение X: {}", tableStartX);
+            log.debug("РИСОВАНИЕ_ТАБЛИЦЫ_ЦЕНТРИРОВАНИЕ: смещение X: {}", tableStartX);
         }
 
         drawTableHeader(graphics, sheet, tableWidth, columnWidth, tableStartY, columnCount, tableStartX, columnIndices);
@@ -138,7 +138,7 @@ public class ImageRendererImpl implements ImageRenderer {
     @Override
     public void drawTableHeader(Graphics2D graphics, Sheet sheet, int tableWidth, int colWidth,
                                 int tableStartY, int columnCount, int tableStartX, List<Integer> columnIndices) {
-        log.debug("РИСОВАНИЕ_ЗАГОЛОВКА_ТАБЛИЦЫ ширина {} столбцов {}", tableWidth, columnCount);
+        log.debug("РИСОВАНИЕ_ЗАГОЛОВКА_ТАБЛИЦЫ: ширина {} столбцов {}", tableWidth, columnCount);
 
         graphics.setColor(tableHeaderColor);
         graphics.fillRect(tableStartX, tableStartY, tableWidth, cellHeight);
@@ -174,7 +174,7 @@ public class ImageRendererImpl implements ImageRenderer {
     public void drawTableRows(Graphics2D graphics, Sheet sheet, int tableWidth, int colWidth,
                               int tableStartY, int rowCount, int columnCount, int tableStartX,
                               List<Integer> columnIndices, List<Integer> rowIndices) {
-        log.debug("РИСОВАНИЕ_СТРОК_ТАБЛИЦЫ строк {} столбцов {}", rowCount, columnCount);
+        log.debug("РИСОВАНИЕ_СТРОК_ТАБЛИЦЫ: строк {} столбцов {}", rowCount, columnCount);
 
         Font cellFont = new Font("Arial", Font.PLAIN, cellFontSize);
         graphics.setFont(cellFont);
@@ -231,7 +231,7 @@ public class ImageRendererImpl implements ImageRenderer {
     /** {@inheritDoc} */
     @Override
     public void drawFooter(Graphics2D graphics, int imageHeight, int imageWidth) {
-        log.debug("РИСОВАНИЕ_ПОДВАЛА размер {}x{}", imageWidth, imageHeight);
+        log.debug("РИСОВАНИЕ_ПОДВАЛА: размер {}x{}", imageWidth, imageHeight);
 
         graphics.setColor(footerTextColor);
         Font footerFont = new Font("Arial", Font.ITALIC, 14);

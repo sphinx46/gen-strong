@@ -73,7 +73,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 BufferedImage cachedImage = imageCacheService.getImageFromCache(cacheKey);
 
                 if (cachedImage != null) {
-                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПОПАДАНИЕ изображение загружено из кеша ключ {}",
+                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПОПАДАНИЕ: изображение загружено из кеша ключ {}",
                             cacheKey);
 
                     Path outputPath = createOutputPath(userId);
@@ -84,19 +84,19 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 }
             }
 
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КОНВЕРТАЦИЯ_В_ИЗОБРАЖЕНИЕ формат {}", defaultImageFormat);
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КОНВЕРТАЦИЯ_В_ИЗОБРАЖЕНИЕ: формат {}", defaultImageFormat);
 
             BufferedImage image = excelToImageConverter.convertExcelToImage(excelFile, defaultImageFormat);
 
             validateGeneratedImage(image);
 
             Path outputPath = createOutputPath(userId);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_СОХРАНЕНИЕ_ИЗОБРАЖЕНИЯ {}", outputPath.toAbsolutePath());
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_СОХРАНЕНИЕ_ИЗОБРАЖЕНИЯ: {}", outputPath.toAbsolutePath());
 
             saveImageToFile(image, outputPath);
 
             long fileSize = Files.size(outputPath);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_СОХРАНЕНО размер {} байт путь {}",
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_СОХРАНЕНО: размер {} байт путь {}",
                     fileSize, outputPath.toAbsolutePath());
 
             File resultImage = outputPath.toFile();
@@ -105,16 +105,16 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
             ExcelUtils.deleteTempFile(excelFile);
 
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_УСПЕХ пользователь {} файл {}",
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_УСПЕХ: пользователь {} файл {}",
                     userId, resultImage.getAbsolutePath());
 
             return resultImage;
 
         } catch (GenerateTrainingPlanException e) {
-            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА {}", e.getMessage());
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА пользователь {} ошибка {}", userId, e.getMessage(), e);
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: пользователь {} ошибка {}", userId, e.getMessage(), e);
             throw new GenerateTrainingPlanException(MessageConstants.GENERATE_PLAN_FAILURE);
         }
     }
@@ -133,7 +133,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
      */
     private void validateGeneratedExcelFile(File excelFile) {
         if (excelFile == null || !excelFile.exists()) {
-            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_НЕ_СОЗДАН не удалось создать Excel файл");
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_НЕ_СОЗДАН: не удалось создать Excel файл");
             throw new GenerateTrainingPlanException("Не удалось создать Excel файл для конвертации");
         }
 
@@ -149,11 +149,11 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
      */
     private void validateGeneratedImage(BufferedImage image) {
         if (image == null) {
-            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_НЕ_СОЗДАНО ошибка при создании изображения");
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_НЕ_СОЗДАНО: ошибка при создании изображения");
             throw new GenerateTrainingPlanException("Не удалось создать изображение");
         }
 
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_СОЗДАНО размер {}x{} пикселей",
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_СОЗДАНО: размер {}x{} пикселей",
                 image.getWidth(), image.getHeight());
     }
 
@@ -168,7 +168,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         Path imageOutputDir = Paths.get(imageOutputDirPath);
         if (!Files.exists(imageOutputDir)) {
             Files.createDirectories(imageOutputDir);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ДИРЕКТОРИЯ_СОЗДАНИЕ {}", imageOutputDir.toAbsolutePath());
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ДИРЕКТОРИЯ_СОЗДАНИЕ: {}", imageOutputDir.toAbsolutePath());
         }
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));

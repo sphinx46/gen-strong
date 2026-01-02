@@ -80,7 +80,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
     /** {@inheritDoc} */
     @Override
     public BufferedImage convertExcelToImage(File excelFile, String outputFormat) {
-        log.info("EXCEL_В_ИЗОБРАЖЕНИЕ_КОНВЕРТАЦИЯ_НАЧАЛО файл {} формат {}", excelFile.getName(), outputFormat);
+        log.info("EXCEL_В_ИЗОБРАЖЕНИЕ_КОНВЕРТАЦИЯ_НАЧАЛО: файл {} формат {}", excelFile.getName(), outputFormat);
 
         ExcelUtils.validateExcelFile(excelFile);
 
@@ -88,7 +88,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             Workbook workbook = createWorkbook(excelFile, inputStream);
 
             try {
-                log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ОБРАБОТКА листов в книге {}", workbook.getNumberOfSheets());
+                log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ОБРАБОТКА: листов в книге {}", workbook.getNumberOfSheets());
 
                 Sheet sheet = getFirstSheet(workbook);
                 return renderSheetToImageOptimized(sheet);
@@ -98,7 +98,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             }
 
         } catch (OutOfMemoryError e) {
-            log.error("EXCEL_КОНВЕРТАЦИЯ_ПЕРЕПОЛНЕНИЕ_ПАМЯТИ {} запуск очистки памяти", e.getMessage());
+            log.error("EXCEL_КОНВЕРТАЦИЯ_ПЕРЕПОЛНЕНИЕ_ПАМЯТИ: {} запуск очистки памяти", e.getMessage());
 
             System.gc();
             try {
@@ -134,17 +134,17 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         List<Integer> nonEmptyColumnIndices = analysis.nonEmptyColumnIndices;
         List<Integer> nonEmptyRowIndices = analysis.nonEmptyRowIndices;
 
-        log.info("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_РАЗМЕР строк {} колонок {} непустых строк {} непустых колонок {}",
+        log.info("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_РАЗМЕР: строк {} колонок {} непустых строк {} непустых колонок {}",
                 actualRows, actualColumns, nonEmptyRowIndices.size(), nonEmptyColumnIndices.size());
 
         if (actualRows > maxRows) {
-            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_БОЛЬШАЯ строк {} > {} будет обрезано", actualRows, maxRows);
+            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_БОЛЬШАЯ: строк {} > {} будет обрезано", actualRows, maxRows);
             actualRows = Math.min(actualRows, maxRows);
             nonEmptyRowIndices = nonEmptyRowIndices.subList(0, actualRows);
         }
 
         if (actualColumns > maxColumns) {
-            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ колонок {} > {} будет обрезано", actualColumns, maxColumns);
+            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ: колонок {} > {} будет обрезано", actualColumns, maxColumns);
             actualColumns = Math.min(actualColumns, maxColumns);
             nonEmptyColumnIndices = nonEmptyColumnIndices.subList(0, actualColumns);
         }
@@ -153,11 +153,11 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         int tableWidth = columnWidth * actualColumns;
 
         if (tableWidth > 8000) {
-            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ {}px применяем масштабирование", tableWidth);
+            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ: {}px применяем масштабирование", tableWidth);
             double scale = 8000.0 / tableWidth;
             columnWidth = (int) (columnWidth * scale);
             tableWidth = columnWidth * actualColumns;
-            log.info("EXCEL_КОНВЕРТАЦИЯ_МАСШТАБИРОВАНИЕ_ШИРИНЫ коэффициент {} новая ширина столбца {}px", scale, columnWidth);
+            log.info("EXCEL_КОНВЕРТАЦИЯ_МАСШТАБИРОВАНИЕ_ШИРИНЫ: коэффициент {} новая ширина столбца {}px", scale, columnWidth);
         }
 
         int imageWidth = Math.min(tableWidth + (2 * padding), 9000);
@@ -167,22 +167,22 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_ПАМЯТИ требуется примерно {} байт для {}x{}", estimatedMemory, imageWidth, imageHeight);
 
         if (estimatedMemory > 100_000_000L || actualRows > directFileRenderingThreshold) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_РЕЖИМ_ФАЙЛОВОГО_РЕНДЕРИНГА использование рендеринга напрямую в файл");
+            log.info("EXCEL_КОНВЕРТАЦИЯ_РЕЖИМ_ФАЙЛОВОГО_РЕНДЕРИНГА: использование рендеринга напрямую в файл");
             try {
                 return renderToFileAndLoad(sheet, actualColumns, actualRows, imageWidth, imageHeight,
                         columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
             } catch (IOException e) {
-                log.warn("EXCEL_КОНВЕРТАЦИЯ_ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОШИБКА возвращаемся к чанковому рендерингу: {}", e.getMessage());
+                log.warn("EXCEL_КОНВЕРТАЦИЯ_ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОШИБКА: возвращаемся к чанковому рендерингу: {}", e.getMessage());
             }
         }
 
         if (estimatedMemory > 50_000_000L) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_БЕЗОПАСНЫЙ_РЕЖИМ использование чанковой отрисовки");
+            log.info("EXCEL_КОНВЕРТАЦИЯ_БЕЗОПАСНЫЙ_РЕЖИМ: использование чанковой отрисовки");
             return renderImageChunked(sheet, actualColumns, actualRows, imageWidth, imageHeight,
                     columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
         }
 
-        log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_РАЗМЕРОВ изображение {}x{} таблица {}px столбец {}px",
+        log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_РАЗМЕРОВ: изображение {}x{} таблица {}px столбец {}px",
                 imageWidth, imageHeight, tableWidth, columnWidth);
 
         return renderImageDirect(sheet, actualColumns, actualRows, imageWidth, imageHeight,
@@ -216,7 +216,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             graphics.dispose();
         }
 
-        log.info("EXCEL_КОНВЕРТАЦИЯ_ИЗОБРАЖЕНИЕ_СОЗДАНО размер {}x{}", image.getWidth(), image.getHeight());
+        log.info("EXCEL_КОНВЕРТАЦИЯ_ИЗОБРАЖЕНИЕ_СОЗДАНО: размер {}x{}", image.getWidth(), image.getHeight());
         return image;
     }
 
@@ -236,7 +236,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
     private BufferedImage renderImageChunked(Sheet sheet, int columnCount, int rowCount,
                                              int imageWidth, int imageHeight, int columnWidth,
                                              List<Integer> columnIndices, List<Integer> rowIndices) {
-        log.info("ЧАНКОВЫЙ_РЕНДЕРИНГ_НАЧАЛО {}x{} строк {} колонок {}", imageWidth, imageHeight, rowCount, columnCount);
+        log.info("ЧАНКОВЫЙ_РЕНДЕРИНГ_НАЧАЛО: {}x{} строк {} колонок {}", imageWidth, imageHeight, rowCount, columnCount);
 
         BufferedImage image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = image.createGraphics();
@@ -273,7 +273,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
 
                 if (chunkStart > 0 && chunkStart % 50 == 0) {
                     System.gc();
-                    log.debug("ЧАНКОВЫЙ_РЕНДЕРИНГ_ПРОГРЕСС обработано {} строк из {}", chunkStart, rowCount);
+                    log.debug("ЧАНКОВЫЙ_РЕНДЕРИНГ_ПРОГРЕСС: обработано {} строк из {}", chunkStart, rowCount);
                 }
             }
 
@@ -286,7 +286,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             graphics.dispose();
         }
 
-        log.info("ЧАНКОВЫЙ_РЕНДЕРИНГ_УСПЕХ изображение создано");
+        log.info("ЧАНКОВЫЙ_РЕНДЕРИНГ_УСПЕХ: изображение создано");
         return image;
     }
 
@@ -405,7 +405,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
                                               int imageWidth, int imageHeight, int columnWidth,
                                               List<Integer> columnIndices, List<Integer> rowIndices)
             throws IOException {
-        log.info("ФАЙЛОВЫЙ_РЕНДЕРИНГ_НАЧАЛО {}x{} строк {} колонок", imageWidth, imageHeight, rowCount);
+        log.info("ФАЙЛОВЫЙ_РЕНДЕРИНГ_НАЧАЛО: {}x{} строк {} колонок", imageWidth, imageHeight, rowCount);
 
         Path tempDir = Paths.get(tempImageDir);
         if (!Files.exists(tempDir)) {
@@ -419,16 +419,16 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
                     columnWidth, columnIndices, rowIndices, tempFile);
 
             long fileSize = Files.size(tempFile);
-            log.info("ФАЙЛОВЫЙ_РЕНДЕРИНГ_СОХРАНЕНИЕ файл создан {} размер {} байт",
+            log.info("ФАЙЛОВЫЙ_РЕНДЕРИНГ_СОХРАНЕНИЕ: файл создан {} размер {} байт",
                     tempFile, fileSize);
 
             BufferedImage image = ImageIO.read(tempFile.toFile());
 
             if (image != null) {
-                log.info("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ЗАГРУЗКА изображение загружено {}x{}",
+                log.info("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ЗАГРУЗКА: изображение загружено {}x{}",
                         image.getWidth(), image.getHeight());
             } else {
-                log.error("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОШИБКА не удалось загрузить изображение из файла");
+                log.error("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОШИБКА: не удалось загрузить изображение из файла");
                 throw new IOException("Не удалось загрузить изображение из временного файла");
             }
 
@@ -437,9 +437,9 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         } finally {
             try {
                 Files.deleteIfExists(tempFile);
-                log.debug("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА временный файл удален");
+                log.debug("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА: временный файл удален");
             } catch (IOException e) {
-                log.warn("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА_ОШИБКА не удалось удалить временный файл: {}", e.getMessage());
+                log.warn("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА_ОШИБКА: не удалось удалить временный файл: {}", e.getMessage());
             }
         }
     }
@@ -594,10 +594,10 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
      */
     private Workbook createWorkbook(File excelFile, InputStream inputStream) throws IOException {
         if (excelFile.getName().toLowerCase().endsWith(".xlsx")) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ФОРМАТ XLSX");
+            log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ФОРМАТ: XLSX");
             return new XSSFWorkbook(inputStream);
         } else if (excelFile.getName().toLowerCase().endsWith(".xls")) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ФОРМАТ XLS");
+            log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ФОРМАТ: XLS");
             return new HSSFWorkbook(inputStream);
         } else {
             log.error("EXCEL_КОНВЕРТАЦИЯ_НЕПОДДЕРЖИВАЕМЫЙ_ФОРМАТ {}", excelFile.getName());
@@ -613,7 +613,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
      */
     private Sheet getFirstSheet(Workbook workbook) {
         if (workbook.getNumberOfSheets() == 0) {
-            log.error("EXCEL_КОНВЕРТАЦИЯ_ПУСТАЯ_КНИГА нет листов");
+            log.error("EXCEL_КОНВЕРТАЦИЯ_ПУСТАЯ_КНИГА: нет листов");
             throw new GenerateTrainingPlanException("Excel файл не содержит листов");
         }
 

@@ -67,10 +67,11 @@ public class ImageCacheServiceImpl implements ImageCacheService {
             cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
             cleanupScheduler.scheduleAtFixedRate(this::cleanupCache,
                     cacheTTLMinutes, cacheTTLMinutes / 2, TimeUnit.MINUTES);
-            log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ кеширование включено, TTL: {} минут, максимальный размер: {}",
+            log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ: кеширование включено, " +
+                            "TTL: {} минут, максимальный размер: {}",
                     cacheTTLMinutes, cacheMaxSize);
         } else {
-            log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ кеширование отключено");
+            log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ: кеширование отключено");
         }
     }
 
@@ -88,7 +89,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
             }
         }
         imageCache.clear();
-        log.info("КЕШ_СЕРВИС_ОСТАНОВКА кеш очищен");
+        log.info("КЕШ_СЕРВИС_ОСТАНОВКА: кеш очищен");
     }
 
     @Override
@@ -108,12 +109,12 @@ public class ImageCacheServiceImpl implements ImageCacheService {
                     return image;
                 }
             } catch (Exception e) {
-                log.warn("КЕШ_СЕРВИС_ОШИБКА_ПОЛУЧЕНИЯ ошибка при загрузке изображения из кеша: {}", e.getMessage());
+                log.warn("КЕШ_СЕРВИС_ОШИБКА_ПОЛУЧЕНИЯ: ошибка при загрузке изображения из кеша: {}", e.getMessage());
                 imageCache.remove(cacheKey);
             }
         } else if (cached != null) {
             imageCache.remove(cacheKey);
-            log.debug("КЕШ_СЕРВИС_УДАЛЕНИЕ просроченная запись удалена ключ {}", cacheKey);
+            log.debug("КЕШ_СЕРВИС_УДАЛЕНИЕ: просроченная запись удалена ключ {}", cacheKey);
         }
 
         return null;
@@ -130,7 +131,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
             if (javax.imageio.ImageIO.write(image, "png", baos)) {
                 byte[] compressedData = baos.toByteArray();
                 imageCache.put(cacheKey, new CachedImage(compressedData, filePath, width, height, 0, 0));
-                log.info("КЕШ_СЕРВИС_СОХРАНЕНИЕ изображение закэшировано ключ {} размер данных {} байт",
+                log.info("КЕШ_СЕРВИС_СОХРАНЕНИЕ: изображение закэшировано ключ {} размер данных {} байт",
                         cacheKey, compressedData.length);
 
                 if (imageCache.size() > cacheMaxSize) {
@@ -138,7 +139,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
                 }
             }
         } catch (Exception e) {
-            log.warn("КЕШ_СЕРВИС_ОШИБКА_СОХРАНЕНИЯ ошибка при кэшировании изображения: {}", e.getMessage());
+            log.warn("КЕШ_СЕРВИС_ОШИБКА_СОХРАНЕНИЯ: ошибка при кэшировании изображения: {}", e.getMessage());
         }
     }
 
@@ -168,7 +169,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
 
         int removedCount = initialSize - imageCache.size();
         if (removedCount > 0) {
-            log.info("КЕШ_СЕРВИС_ОЧИСТКА удалено {} просроченных записей", removedCount);
+            log.info("КЕШ_СЕРВИС_ОЧИСТКА: удалено {} просроченных записей", removedCount);
         }
 
         if (imageCache.size() > cacheMaxSize) {
@@ -177,7 +178,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
                     .sorted((e1, e2) -> Long.compare(e1.getValue().creationTime, e2.getValue().creationTime))
                     .limit(toRemove)
                     .forEach(entry -> imageCache.remove(entry.getKey()));
-            log.info("КЕШ_СЕРВИС_ОЧИСТКА удалено {} старых записей для ограничения размера", toRemove);
+            log.info("КЕШ_СЕРВИС_ОЧИСТКА: удалено {} старых записей для ограничения размера", toRemove);
         }
 
         System.gc();

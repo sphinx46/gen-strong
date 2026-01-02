@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import javax.imageio.ImageIO;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,20 +37,14 @@ public class ImageCacheServiceImpl implements ImageCacheService {
     private static class CachedImage {
         final byte[] compressedImageData;
         final long creationTime;
-        final String filePath;
         final int width;
         final int height;
-        final int actualRows;
-        final int actualColumns;
 
-        CachedImage(byte[] compressedImageData, String filePath, int width, int height, int actualRows, int actualColumns) {
+        CachedImage(byte[] compressedImageData, int width, int height) {
             this.compressedImageData = compressedImageData;
             this.creationTime = System.currentTimeMillis();
-            this.filePath = filePath;
             this.width = width;
             this.height = height;
-            this.actualRows = actualRows;
-            this.actualColumns = actualColumns;
         }
 
         boolean isExpired(long ttlMillis) {
@@ -67,8 +62,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
             cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
             cleanupScheduler.scheduleAtFixedRate(this::cleanupCache,
                     cacheTTLMinutes, cacheTTLMinutes / 2, TimeUnit.MINUTES);
-            log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ: кеширование включено, " +
-                            "TTL: {} минут, максимальный размер: {}",
+            log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ: кеширование включено, TTL: {} минут, максимальный размер: {}",
                     cacheTTLMinutes, cacheMaxSize);
         } else {
             log.info("КЕШ_СЕРВИС_ИНИЦИАЛИЗАЦИЯ: кеширование отключено");
@@ -102,9 +96,9 @@ public class ImageCacheServiceImpl implements ImageCacheService {
         if (cached != null && !cached.isExpired(TimeUnit.MINUTES.toMillis(cacheTTLMinutes))) {
             try {
                 ByteArrayInputStream bais = new ByteArrayInputStream(cached.compressedImageData);
-                BufferedImage image = javax.imageio.ImageIO.read(bais);
+                BufferedImage image = ImageIO.read(bais);
                 if (image != null) {
-                    log.info("КЕШ_СЕРВИС_ПОЛУЧЕНИЕ изображение загружено из кеша ключ {} размер {}x{}",
+                    log.info("КЕШ_СЕРВИС_ПОПАДАНИЕ: изображение загружено из кеша ключ {} размер {}x{}",
                             cacheKey, cached.width, cached.height);
                     return image;
                 }
@@ -128,9 +122,9 @@ public class ImageCacheServiceImpl implements ImageCacheService {
 
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            if (javax.imageio.ImageIO.write(image, "png", baos)) {
+            if (ImageIO.write(image, "png", baos)) {
                 byte[] compressedData = baos.toByteArray();
-                imageCache.put(cacheKey, new CachedImage(compressedData, filePath, width, height, 0, 0));
+                imageCache.put(cacheKey, new CachedImage(compressedData, width, height));
                 log.info("КЕШ_СЕРВИС_СОХРАНЕНИЕ: изображение закэшировано ключ {} размер данных {} байт",
                         cacheKey, compressedData.length);
 
@@ -147,12 +141,27 @@ public class ImageCacheServiceImpl implements ImageCacheService {
     public String generateCacheKey(File excelFile, Double maxBenchPress) {
         String fileName = excelFile.getName();
         long fileSize = excelFile.length();
-        long lastModified = excelFile.lastModified();
 
         if (maxBenchPress != null) {
-            return String.format("%s_%d_%d_%.1f", fileName, fileSize, lastModified, maxBenchPress);
+            double roundedBenchPress = Math.round(maxBenchPress * 10.0) / 10.0;
+            return String.format("training_plan_%d_%.1f", fileSize, roundedBenchPress);
         } else {
-            return String.format("%s_%d_%d", fileName, fileSize, lastModified);
+            return String.format("training_plan_%d", fileSize);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String generateSimpleCacheKey(Double maxBenchPress, String templatePath) {
+        String templateName = new File(templatePath).getName();
+
+        if (maxBenchPress != null) {
+            double roundedBenchPress = Math.round(maxBenchPress * 10.0) / 10.0;
+            return String.format("%s_%.1f", templateName, roundedBenchPress);
+        } else {
+            return templateName;
         }
     }
 
@@ -187,5 +196,23 @@ public class ImageCacheServiceImpl implements ImageCacheService {
     @Override
     public boolean isCacheEnabled() {
         return cacheEnabled;
+    }
+
+    /**
+     * Очищает весь кэш (для тестирования).
+     */
+    public void clearAllCache() {
+        int size = imageCache.size();
+        imageCache.clear();
+        log.info("КЕШ_СЕРВИС_ПОЛНАЯ_ОЧИСТКА: удалено {} записей", size);
+    }
+
+    /**
+     * Возвращает текущий размер кэша.
+     *
+     * @return количество записей в кэше
+     */
+    public int getCacheSize() {
+        return imageCache.size();
     }
 }

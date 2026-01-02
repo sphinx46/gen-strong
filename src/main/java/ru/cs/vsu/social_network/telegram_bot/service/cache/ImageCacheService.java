@@ -20,17 +20,17 @@ public interface ImageCacheService {
      * Сохраняет изображение в кэш.
      *
      * @param cacheKey ключ кэша
-     * @param image изображение для кэширования
+     * @param image    изображение для кэширования
      * @param filePath путь к файлу
-     * @param width ширина изображения
-     * @param height высота изображения
+     * @param width    ширина изображения
+     * @param height   высота изображения
      */
     void cacheImage(String cacheKey, BufferedImage image, String filePath, int width, int height);
 
     /**
      * Генерирует ключ кэша для файла.
      *
-     * @param excelFile Excel файл
+     * @param excelFile     Excel файл
      * @param maxBenchPress максимальный вес жима лежа
      * @return ключ кэша
      */
@@ -47,4 +47,14 @@ public interface ImageCacheService {
      * @return true если кэширование включено
      */
     boolean isCacheEnabled();
+
+    /**
+     * Альтернативный метод генерации ключа кэша для случая,
+     * когда имя шаблона всегда одинаковое.
+     *
+     * @param maxBenchPress максимальный вес жима лежа
+     * @param templatePath  путь к шаблону
+     * @return ключ кэша
+     */
+    String generateSimpleCacheKey(Double maxBenchPress, String templatePath);
 }

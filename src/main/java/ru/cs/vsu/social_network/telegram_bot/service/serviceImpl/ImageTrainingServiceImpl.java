@@ -36,17 +36,13 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     @Value("${training.image.format:png}")
     private String defaultImageFormat;
 
+    @Value("${training.template.path:training_cycles/gusenica_cycle.xlsx}")
+    private String templatePath;
+
     private final ExcelTrainingService excelTrainingService;
     private final ExcelToImageConverter excelToImageConverter;
     private final ImageCacheService imageCacheService;
 
-    /**
-     * Конструктор для внедрения зависимостей.
-     *
-     * @param excelTrainingService сервис генерации Excel файлов
-     * @param excelToImageConverter конвертер Excel в изображение
-     * @param imageCacheService сервис кэширования изображений
-     */
     public ImageTrainingServiceImpl(ExcelTrainingService excelTrainingService,
                                     ExcelToImageConverter excelToImageConverter,
                                     ImageCacheService imageCacheService) {
@@ -58,40 +54,47 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     /** {@inheritDoc} */
     @Override
     public File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest) {
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО пользователь {} жим лежа {} кг",
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {} жим лежа {} кг",
                 userId, userBenchPressRequest.getMaxBenchPress());
 
         try {
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ГЕНЕРАЦИЯ создание Excel файла для пользователя {}", userId);
-
-            File excelFile = excelTrainingService.generateTrainingPlan(userId, userBenchPressRequest);
-
-            validateGeneratedExcelFile(excelFile);
-
             if (imageCacheService.isCacheEnabled()) {
-                String cacheKey = imageCacheService.generateCacheKey(excelFile, userBenchPressRequest.getMaxBenchPress());
-                BufferedImage cachedImage = imageCacheService.getImageFromCache(cacheKey);
+                String simpleCacheKey = imageCacheService.generateSimpleCacheKey(
+                        userBenchPressRequest.getMaxBenchPress(),
+                        templatePath
+                );
+
+                BufferedImage cachedImage = imageCacheService.getImageFromCache(simpleCacheKey);
 
                 if (cachedImage != null) {
                     log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПОПАДАНИЕ: изображение загружено из кеша ключ {}",
-                            cacheKey);
+                            simpleCacheKey);
 
                     Path outputPath = createOutputPath(userId);
                     saveImageToFile(cachedImage, outputPath);
 
-                    ExcelUtils.deleteTempFile(excelFile);
+                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗ_КЕША_СОЗДАНО: файл {} размер {}x{}",
+                            outputPath.toAbsolutePath(), cachedImage.getWidth(), cachedImage.getHeight());
+
                     return outputPath.toFile();
+                } else {
+                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПРОМАХ: ключ {} не найден в кеше",
+                            simpleCacheKey);
                 }
             }
+
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ГЕНЕРАЦИЯ: создание Excel файла для пользователя {}", userId);
+
+            File excelFile = excelTrainingService.generateTrainingPlan(userId, userBenchPressRequest);
+            validateGeneratedExcelFile(excelFile);
 
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КОНВЕРТАЦИЯ_В_ИЗОБРАЖЕНИЕ: формат {}", defaultImageFormat);
 
             BufferedImage image = excelToImageConverter.convertExcelToImage(excelFile, defaultImageFormat);
-
             validateGeneratedImage(image);
 
             Path outputPath = createOutputPath(userId);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_СОХРАНЕНИЕ_ИЗОБРАЖЕНИЯ: {}", outputPath.toAbsolutePath());
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_СОХРАНЕНИЕ_ИЗОБРАЖЕНИЯ {}", outputPath.toAbsolutePath());
 
             saveImageToFile(image, outputPath);
 
@@ -101,7 +104,22 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
             File resultImage = outputPath.toFile();
 
-            cacheGeneratedImage(image, excelFile, userBenchPressRequest.getMaxBenchPress(), outputPath);
+            if (imageCacheService.isCacheEnabled()) {
+                String simpleCacheKey = imageCacheService.generateSimpleCacheKey(
+                        userBenchPressRequest.getMaxBenchPress(),
+                        templatePath
+                );
+
+                imageCacheService.cacheImage(
+                        simpleCacheKey,
+                        image,
+                        outputPath.toString(),
+                        image.getWidth(),
+                        image.getHeight()
+                );
+
+                log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_СОХРАНЕНО: ключ {}", simpleCacheKey);
+            }
 
             ExcelUtils.deleteTempFile(excelFile);
 
@@ -127,9 +145,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
     /**
      * Проверяет сгенерированный Excel файл.
-     *
-     * @param excelFile файл для проверки
-     * @throws GenerateTrainingPlanException если файл недействителен
      */
     private void validateGeneratedExcelFile(File excelFile) {
         if (excelFile == null || !excelFile.exists()) {
@@ -137,15 +152,12 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             throw new GenerateTrainingPlanException("Не удалось создать Excel файл для конвертации");
         }
 
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_СОЗДАН размер {} байт путь {}",
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_СОЗДАН: размер {} байт путь {}",
                 excelFile.length(), excelFile.getAbsolutePath());
     }
 
     /**
      * Проверяет сгенерированное изображение.
-     *
-     * @param image изображение для проверки
-     * @throws GenerateTrainingPlanException если изображение недействительно
      */
     private void validateGeneratedImage(BufferedImage image) {
         if (image == null) {
@@ -159,16 +171,12 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
     /**
      * Создает путь для сохранения изображения.
-     *
-     * @param userId идентификатор пользователя
-     * @return путь для сохранения
-     * @throws Exception если не удалось создать директорию
      */
     private Path createOutputPath(UUID userId) throws Exception {
         Path imageOutputDir = Paths.get(imageOutputDirPath);
         if (!Files.exists(imageOutputDir)) {
             Files.createDirectories(imageOutputDir);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ДИРЕКТОРИЯ_СОЗДАНИЕ: {}", imageOutputDir.toAbsolutePath());
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ДИРЕКТОРИЯ_СОЗДАНИЕ {}", imageOutputDir.toAbsolutePath());
         }
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
@@ -178,32 +186,8 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
     /**
      * Сохраняет изображение в файл.
-     *
-     * @param image изображение для сохранения
-     * @param outputPath путь к файлу
-     * @throws Exception если не удалось сохранить изображение
      */
     private void saveImageToFile(BufferedImage image, Path outputPath) throws Exception {
         ExcelUtils.saveImageWithCompression(image, defaultImageFormat, outputPath.toFile());
-    }
-
-    /**
-     * Кэширует сгенерированное изображение.
-     *
-     * @param image изображение для кэширования
-     * @param excelFile исходный Excel файл
-     * @param maxBenchPress максимальный вес жима лежа
-     * @param outputPath путь к сохраненному файлу
-     */
-    private void cacheGeneratedImage(BufferedImage image, File excelFile, Double maxBenchPress, Path outputPath) {
-        if (imageCacheService.isCacheEnabled()) {
-            imageCacheService.cacheImage(
-                    imageCacheService.generateCacheKey(excelFile, maxBenchPress),
-                    image,
-                    outputPath.toString(),
-                    image.getWidth(),
-                    image.getHeight()
-            );
-        }
     }
 }

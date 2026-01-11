@@ -2,10 +2,8 @@ package ru.cs.vsu.social_network.telegram_bot.bot;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -13,16 +11,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.cs.vsu.social_network.telegram_bot.config.BotConfig;
-import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
-import ru.cs.vsu.social_network.telegram_bot.entity.enums.ROLE;
 import ru.cs.vsu.social_network.telegram_bot.dto.response.UserInfoResponse;
+import ru.cs.vsu.social_network.telegram_bot.entity.enums.ROLE;
+import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
 import ru.cs.vsu.social_network.telegram_bot.service.UserService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -31,7 +28,6 @@ import java.util.regex.Pattern;
 public class GymTelegramBot extends TelegramLongPollingBot {
 
     private static final String BOT_NAME = "GYM_TELEGRAM_BOT";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final DateTimeFormatter INPUT_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final Pattern BENCH_PRESS_PATTERN = Pattern.compile("^\\d+(?:\\.\\d{1,2})?$");
 
@@ -39,11 +35,17 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     private final TelegramCommandService telegramCommandService;
     private final UserService userService;
 
-    public GymTelegramBot(final DefaultBotOptions botOptions,
-                          final BotConfig botConfig,
+    /**
+     * Конструктор бота.
+     *
+     * @param botConfig конфигурация бота
+     * @param telegramCommandService сервис обработки команд
+     * @param userService сервис пользователей
+     */
+    public GymTelegramBot(final BotConfig botConfig,
                           final TelegramCommandService telegramCommandService,
                           final UserService userService) {
-        super(botOptions);
+        super(botConfig.getBotToken());
         this.botConfig = botConfig;
         this.telegramCommandService = telegramCommandService;
         this.userService = userService;
@@ -54,11 +56,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     @Override
     public String getBotUsername() {
         return botConfig.getBotUsername();
-    }
-
-    @Override
-    public String getBotToken() {
-        return botConfig.getBotToken();
     }
 
     @Override
@@ -79,7 +76,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 BOT_NAME, telegramId, chatId, text);
 
         try {
-            final String response = processMessage(telegramId, chatId, text, message);
+            final String response = processMessage(telegramId, text, message);
             sendResponse(chatId, response, telegramId);
 
         } catch (Exception e) {
@@ -89,8 +86,15 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Обрабатывает входящее сообщение.
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param text текст сообщения
+     * @param message объект сообщения
+     * @return результат обработки сообщения
+     */
     private String processMessage(final Long telegramId,
-                                  final Long chatId,
                                   final String text,
                                   final Message message) {
 
@@ -137,6 +141,12 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Проверяет, является ли текст вводом даты.
+     *
+     * @param text текст для проверки
+     * @return true если текст является датой
+     */
     private boolean isDateInput(String text) {
         try {
             if ("сегодня".equalsIgnoreCase(text.trim()) ||
@@ -150,6 +160,12 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Проверяет, является ли текст вводом жима лежа.
+     *
+     * @param text текст для проверки
+     * @return true если текст является числом жима лежа
+     */
     private boolean isBenchPressInput(String text) {
         String trimmed = text.trim();
 
@@ -160,6 +176,12 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return BENCH_PRESS_PATTERN.matcher(trimmed).matches();
     }
 
+    /**
+     * Проверяет, является ли текст выбором формата программы тренировок.
+     *
+     * @param text текст для проверки
+     * @return true если текст является выбором формата
+     */
     private boolean isFormatSelection(String text) {
         String trimmed = text.trim();
         String lowerText = trimmed.toLowerCase();
@@ -182,7 +204,14 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 "два".equals(lowerText);
     }
 
-
+    /**
+     * Обрабатывает текстовую команду.
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param commandText текст команды
+     * @param message объект сообщения
+     * @return результат обработки команды
+     */
     private String processCommand(final Long telegramId,
                                   final String commandText,
                                   final Message message) {
@@ -190,47 +219,14 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         log.debug("{}_КОМАНДА_ОБРАБОТКА_НАЧАЛО: текст команды '{}' от пользователя {}",
                 BOT_NAME, commandText, telegramId);
 
-        if (commandText.startsWith("/report period")) {
-            log.debug("{}_КОМАНДА_ОБРАБОТКА: команда /report period от пользователя {}",
-                    BOT_NAME, telegramId);
+        final String command = commandText.split("\\s+", 2)[0].toLowerCase();
 
-            String periodParams = commandText.substring("/report period".length()).trim();
-            String[] dateParts = periodParams.split("\\s+");
-
-            String[] parts = new String[3];
-            parts[0] = "/report period";
-
-            if (dateParts.length >= 2) {
-                parts[1] = dateParts[0];
-                parts[2] = dateParts[1];
-            } else if (dateParts.length == 1) {
-                parts[1] = dateParts[0];
-            }
-
-            return handleReportPeriodCommand(telegramId, parts);
-        }
-
-        final String[] parts;
-        if (commandText.startsWith("/report") && commandText.contains("(сегодня)")) {
-            parts = new String[] { "/report", null };
-        } else {
-            parts = commandText.split("\\s+", 3);
-        }
-
-        final String command = parts[0].toLowerCase();
-
-        log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}' от пользователя {}, части: {}",
-                BOT_NAME, command, telegramId, Arrays.toString(parts));
+        log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}' от пользователя {}",
+                BOT_NAME, command, telegramId);
 
         switch (command) {
             case "/start":
                 return handleStartCommand(telegramId, message);
-
-            case "/report":
-                return handleReportCommand(telegramId, parts);
-
-            case "/table":
-                return handleTableCommand(telegramId, parts);
 
             case "/help":
                 return telegramCommandService.handleHelpCommand(telegramId);
@@ -242,6 +238,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Обрабатывает команду /start.
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param message объект сообщения
+     * @return результат обработки команды
+     */
     private String handleStartCommand(final Long telegramId, final Message message) {
         final String username = message.getFrom().getUserName();
         final String firstName = message.getFrom().getFirstName();
@@ -252,57 +255,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return telegramCommandService.handleStartCommand(telegramId, username, firstName, lastName);
     }
 
-    private String handleReportCommand(final Long telegramId, final String[] parts) {
-        String dateStr = null;
-
-        if (parts.length > 1 && parts[1] != null) {
-            final String param = parts[1];
-            if (param.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
-                dateStr = param;
-            }
-        }
-
-        log.debug("{}_КОМАНДА_REPORT: отчет за дату '{}' от {}",
-                BOT_NAME, dateStr != null ? dateStr : "сегодня", telegramId);
-
-        return telegramCommandService.handleDailyReportCommand(telegramId, dateStr);
-    }
-
-    private String handleReportPeriodCommand(final Long telegramId, final String[] parts) {
-        if (parts.length < 3) {
-            log.warn("{}_КОМАНДА_REPORT_PERIOD_НЕПОЛНАЯ: недостаточно параметров от {}",
-                    BOT_NAME, telegramId);
-            return "Неверный формат команды!\n" +
-                    "Используйте: /report period ДД.ММ.ГГГГ ДД.ММ.ГГГГ\n" +
-                    "Пример: /report period 01.12.2025 06.12.2025";
-        }
-
-        final String startDateStr = parts[1];
-        final String endDateStr = parts[2];
-
-        log.debug("{}_КОМАНДА_REPORT_PERIOD: отчет за период {} - {} от {}",
-                BOT_NAME, startDateStr, endDateStr, telegramId);
-
-        return telegramCommandService.handlePeriodReportCommand(telegramId, startDateStr, endDateStr);
-    }
-
-    private String handleTableCommand(final Long telegramId, final String[] parts) {
-        String input = null;
-        if (parts.length > 1) {
-            final StringBuilder sb = new StringBuilder();
-            for (int i = 1; i < parts.length; i++) {
-                if (sb.length() > 0) sb.append(" ");
-                sb.append(parts[i]);
-            }
-            input = sb.toString();
-        }
-
-        log.debug("{}_КОМАНДА_TABLE: таблица посещений от пользователя {}, параметры: '{}'",
-                BOT_NAME, telegramId, input != null ? input : "без параметров");
-
-        return telegramCommandService.handleTableCommand(telegramId, input);
-    }
-
+    /**
+     * Отправляет ответ пользователю.
+     *
+     * @param chatId идентификатор чата
+     * @param responseText текст ответа
+     * @param telegramId идентификатор пользователя в Telegram
+     */
     private void sendResponse(final Long chatId, final String responseText, final Long telegramId) {
         try {
             final SendMessage message = new SendMessage();
@@ -311,10 +270,10 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
             message.setReplyMarkup(createMainMenuKeyboard(telegramId));
 
-            final Message sentMessage = execute(message);
+            execute(message);
 
-            log.debug("{}_ОТВЕТ_ОТПРАВЛЕН: ответ пользователю {} отправлен, messageId: {}",
-                    BOT_NAME, telegramId, sentMessage.getMessageId());
+            log.debug("{}_ОТВЕТ_ОТПРАВЛЕН: ответ пользователю {} отправлен",
+                    BOT_NAME, telegramId);
 
         } catch (TelegramApiException e) {
             log.error("{}_ОТВЕТ_ОШИБКА: не удалось отправить ответ пользователю {}: {}",
@@ -322,6 +281,12 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Создает основное меню клавиатуры.
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return настроенная клавиатура
+     */
     private ReplyKeyboardMarkup createMainMenuKeyboard(final Long telegramId) {
         final ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setSelective(true);
@@ -366,10 +331,12 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return keyboardMarkup;
     }
 
-    private String getCurrentDateFormatted() {
-        return LocalDate.now().format(DATE_FORMATTER);
-    }
-
+    /**
+     * Отправляет сообщение об ошибке пользователю.
+     *
+     * @param chatId идентификатор чата
+     * @param telegramId идентификатор пользователя в Telegram
+     */
     private void sendErrorResponse(final Long chatId, final Long telegramId) {
         try {
             final SendMessage message = new SendMessage();
@@ -386,27 +353,6 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             log.error("{}_ОШИБКА_ОТПРАВКИ_ОШИБКИ: не удалось отправить сообщение об ошибке пользователю {}: {}",
                     BOT_NAME, telegramId, e.getMessage());
         }
-    }
-
-    private void deleteMessage(final Long chatId, final Integer messageId, final Long telegramId) {
-        try {
-            final DeleteMessage deleteMessage = new DeleteMessage();
-            deleteMessage.setChatId(chatId.toString());
-            deleteMessage.setMessageId(messageId);
-
-            execute(deleteMessage);
-
-            log.debug("{}_СООБЩЕНИЕ_УДАЛЕНО: сообщение {} удалено из чата {}",
-                    BOT_NAME, messageId, chatId);
-
-        } catch (TelegramApiException e) {
-            log.warn("{}_УДАЛЕНИЕ_ОШИБКА: не удалось удалить сообщение {}: {}",
-                    BOT_NAME, messageId, e.getMessage());
-        }
-    }
-
-    public String getBotName() {
-        return botConfig.getBotName();
     }
 
     @Override

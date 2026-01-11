@@ -33,8 +33,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
      */
     @Override
     public String handleStartCommand(Long telegramId, String username, String firstName, String lastName) {
-        String input = username + "|" + (firstName != null ? firstName : "")
-                + "|" + (lastName != null ? lastName : "");
+        String input = username + "|" + (firstName != null ? firstName : "") + "|" + (lastName != null ? lastName : "");
         return executeCommand("start", telegramId, input);
     }
 

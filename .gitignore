@@ -34,7 +34,7 @@ build/
 /.mvn/
 
 .DS_STORE
-.env-dev
+.env.dev
 .env-prod
 
 /.mvn/wrapper/

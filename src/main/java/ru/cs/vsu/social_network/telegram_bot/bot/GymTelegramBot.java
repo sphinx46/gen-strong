@@ -2,6 +2,7 @@ package ru.cs.vsu.social_network.telegram_bot.bot;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -38,20 +39,23 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     /**
      * Конструктор бота.
      *
-     * @param botConfig конфигурация бота
+     * @param botOptions             опции бота
+     * @param botConfig              конфигурация бота
      * @param telegramCommandService сервис обработки команд
-     * @param userService сервис пользователей
+     * @param userService            сервис пользователей
      */
-    public GymTelegramBot(final BotConfig botConfig,
+    public GymTelegramBot(final DefaultBotOptions botOptions,
+                          final BotConfig botConfig,
                           final TelegramCommandService telegramCommandService,
                           final UserService userService) {
-        super(botConfig.getBotToken());
+        super(botOptions, botConfig.getBotToken());
         this.botConfig = botConfig;
         this.telegramCommandService = telegramCommandService;
         this.userService = userService;
 
         log.info("{}_ИНИЦИАЛИЗАЦИЯ_НАЧАЛО: создание бота {}", BOT_NAME, botConfig.getBotUsername());
     }
+
 
     @Override
     public String getBotUsername() {
@@ -90,8 +94,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
      * Обрабатывает входящее сообщение.
      *
      * @param telegramId идентификатор пользователя в Telegram
-     * @param text текст сообщения
-     * @param message объект сообщения
+     * @param text       текст сообщения
+     * @param message    объект сообщения
      * @return результат обработки сообщения
      */
     private String processMessage(final Long telegramId,
@@ -207,9 +211,9 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     /**
      * Обрабатывает текстовую команду.
      *
-     * @param telegramId идентификатор пользователя в Telegram
+     * @param telegramId  идентификатор пользователя в Telegram
      * @param commandText текст команды
-     * @param message объект сообщения
+     * @param message     объект сообщения
      * @return результат обработки команды
      */
     private String processCommand(final Long telegramId,
@@ -224,25 +228,22 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}' от пользователя {}",
                 BOT_NAME, command, telegramId);
 
-        switch (command) {
-            case "/start":
-                return handleStartCommand(telegramId, message);
-
-            case "/help":
-                return telegramCommandService.handleHelpCommand(telegramId);
-
-            default:
+        return switch (command) {
+            case "/start" -> handleStartCommand(telegramId, message);
+            case "/help" -> telegramCommandService.handleHelpCommand(telegramId);
+            default -> {
                 log.warn("{}_КОМАНДА_НЕИЗВЕСТНАЯ: неизвестная команда '{}' от {}",
                         BOT_NAME, command, telegramId);
-                return telegramCommandService.handleUnknownCommand(telegramId);
-        }
+                yield telegramCommandService.handleUnknownCommand(telegramId);
+            }
+        };
     }
 
     /**
      * Обрабатывает команду /start.
      *
      * @param telegramId идентификатор пользователя в Telegram
-     * @param message объект сообщения
+     * @param message    объект сообщения
      * @return результат обработки команды
      */
     private String handleStartCommand(final Long telegramId, final Message message) {
@@ -258,9 +259,9 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     /**
      * Отправляет ответ пользователю.
      *
-     * @param chatId идентификатор чата
+     * @param chatId       идентификатор чата
      * @param responseText текст ответа
-     * @param telegramId идентификатор пользователя в Telegram
+     * @param telegramId   идентификатор пользователя в Telegram
      */
     private void sendResponse(final Long chatId, final String responseText, final Long telegramId) {
         try {
@@ -334,7 +335,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     /**
      * Отправляет сообщение об ошибке пользователю.
      *
-     * @param chatId идентификатор чата
+     * @param chatId     идентификатор чата
      * @param telegramId идентификатор пользователя в Telegram
      */
     private void sendErrorResponse(final Long chatId, final Long telegramId) {

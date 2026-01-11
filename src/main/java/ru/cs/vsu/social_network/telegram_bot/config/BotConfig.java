@@ -1,12 +1,12 @@
 package ru.cs.vsu.social_network.telegram_bot.config;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.telegram.telegrambots.meta.TelegramBotsApi;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import org.springframework.context.annotation.Lazy;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import ru.cs.vsu.social_network.telegram_bot.bot.GymTelegramBot;
 import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
 import ru.cs.vsu.social_network.telegram_bot.service.UserService;
@@ -19,60 +19,75 @@ import ru.cs.vsu.social_network.telegram_bot.service.UserService;
 @Configuration
 public class BotConfig {
 
+    @Getter
     @Value("${telegram.bot.token}")
     private String botToken;
 
+    @Getter
     @Value("${telegram.bot.username}")
     private String botUsername;
 
     @Value("${telegram.bot.name}")
     private String botName;
 
-    /**
-     * Создает экземпляр Telegram бота.
-     *
-     * @param telegramCommandService сервис обработки команд
-     * @param userService сервис пользователей
-     * @return экземпляр бота
-     */
+    @Value("${telegram.proxy.enabled:false}")
+    private boolean proxyEnabled;
+
+    @Value("${telegram.proxy.host:}")
+    private String proxyHost;
+
+    @Value("${telegram.proxy.port:0}")
+    private Integer proxyPort;
+
+    @Value("${telegram.proxy.type:SOCKS5}")
+    private String proxyType;
+
     @Bean
-    public GymTelegramBot gymTelegramBot(final TelegramCommandService telegramCommandService,
+    public DefaultBotOptions botOptions() {
+        log.info("БОТ_КОНФИГ_СОЗДАНИЕ_ОПЦИЙ: создание DefaultBotOptions бина");
+
+        final DefaultBotOptions botOptions = new DefaultBotOptions();
+
+        if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort != null && proxyPort > 0) {
+            log.info("БОТ_КОНФИГ_ПРОКСИ: включен прокси {}:{} тип {}",
+                    proxyHost, proxyPort, proxyType);
+
+            configureProxy(botOptions);
+        } else {
+            log.debug("БОТ_КОНФИГ_ПРОКСИ: прокси отключен");
+        }
+
+        return botOptions;
+    }
+
+    private void configureProxy(final DefaultBotOptions botOptions) {
+        try {
+            final DefaultBotOptions.ProxyType proxyTypeEnum =
+                    DefaultBotOptions.ProxyType.valueOf(proxyType);
+
+            botOptions.setProxyHost(proxyHost);
+            botOptions.setProxyPort(proxyPort);
+            botOptions.setProxyType(proxyTypeEnum);
+
+            log.info("БОТ_КОНФИГ_ПРОКСИ_УСПЕХ: прокси {}:{} типа {} настроен",
+                    proxyHost, proxyPort, proxyType);
+
+        } catch (IllegalArgumentException e) {
+            log.error("БОТ_КОНФИГ_ПРОКСИ_НЕПОДДЕРЖИВАЕМЫЙ_ТИП: тип прокси '{}' не поддерживается", proxyType);
+            log.info("БОТ_КОНФИГ_ПРОКСИ: используется прямое соединение без прокси");
+        }
+    }
+
+    @Lazy
+    @Bean
+    public GymTelegramBot gymTelegramBot(final DefaultBotOptions botOptions,
+                                         final TelegramCommandService telegramCommandService,
                                          final UserService userService) {
         log.info("БОТ_КОНФИГ_СОЗДАНИЕ_БОТА: создание GymTelegramBot с username: {}", botUsername);
 
-        final GymTelegramBot bot = new GymTelegramBot(this, telegramCommandService, userService);
+        final GymTelegramBot bot = new GymTelegramBot(botOptions, this, telegramCommandService, userService);
 
         log.info("БОТ_КОНФИГ_СОЗДАНИЕ_БОТА_УСПЕХ: бот {} успешно создан", botUsername);
         return bot;
-    }
-
-    /**
-     * Создает и регистрирует Telegram бота.
-     *
-     * @param bot экземпляр бота
-     * @return TelegramBotsApi
-     * @throws TelegramApiException если не удалось зарегистрировать бота
-     */
-    @Bean
-    public TelegramBotsApi telegramBotsApi(GymTelegramBot bot) throws TelegramApiException {
-        log.info("БОТ_КОНФИГ_РЕГИСТРАЦИЯ_БОТА: регистрация бота {}", botUsername);
-
-        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-        botsApi.registerBot(bot);
-
-        log.info("БОТ_КОНФИГ_РЕГИСТРАЦИЯ_УСПЕХ: бот {} успешно зарегистрирован", botUsername);
-        return botsApi;
-    }
-
-    public String getBotToken() {
-        return botToken;
-    }
-
-    public String getBotUsername() {
-        return botUsername;
-    }
-
-    public String getBotName() {
-        return botName;
     }
 }

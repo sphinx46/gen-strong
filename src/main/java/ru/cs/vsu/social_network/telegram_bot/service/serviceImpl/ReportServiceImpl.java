@@ -325,12 +325,6 @@ public class ReportServiceImpl implements ReportService {
      * @param date дата для генерации журнала
      * @return DTO сохраненного журнала посещений
      */
-    /**
-     * Генерирует и сохраняет журнал посещений для указанной даты.
-     *
-     * @param date дата для генерации журнала
-     * @return DTO сохраненного журнала посещений
-     */
     public VisitorLogResponse generateAndSaveVisitorLog(final LocalDate date) {
         log.debug("{}_ГЕНЕРАЦИЯ_ЖУРНАЛА_ДЛЯ_ДАТЫ_НАЧАЛО: дата: {}", SERVICE_NAME, date);
 

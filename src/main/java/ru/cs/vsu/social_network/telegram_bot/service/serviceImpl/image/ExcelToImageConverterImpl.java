@@ -437,6 +437,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         return new SheetAnalysisResult(actualRows, actualColumns, nonEmptyColumnIndices, nonEmptyRowIndices);
     }
 
+
     /**
      * Вычисляет оптимальную ширину столбцов с кэшированием.
      *

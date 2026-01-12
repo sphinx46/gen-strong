@@ -81,12 +81,14 @@ public class ImageRendererImpl implements ImageRenderer {
     private final Color footerTextColor;
 
     private static final String FOOTER_PREFIX = "Сгенерировано Gen Strong ботом • ";
-    private static final String DATE_TIME_FORMAT = "dd.MM.yyyy HH:mm";
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
     private static final int HEADER_TEXT_OFFSET = 20;
     private static final int CELL_TEXT_OFFSET = 10;
     private static final int TEXT_MARGIN = 10;
     private static final int MIN_COLUMN_WIDTH = 80;
     private static final int MAX_COLUMN_WIDTH = 450;
+    private static final int MAX_TEXT_LENGTH_BEFORE_WRAP = 15;
+    private static final int WRAP_LINE_HEIGHT_OFFSET = 15;
 
     /**
      * Конструктор инициализирует цветовую схему для рендеринга.
@@ -193,7 +195,6 @@ public class ImageRendererImpl implements ImageRenderer {
                     int actualColumn = columnIndices.get(j);
                     Cell cell = row.getCell(actualColumn);
                     int x = tableStartX + j * colWidth;
-                    int textY = y + cellHeight - CELL_TEXT_OFFSET;
 
                     String cellValue = ExcelUtils.getCellValueAsString(cell);
                     if (cellValue != null && !cellValue.isEmpty()) {
@@ -205,9 +206,13 @@ public class ImageRendererImpl implements ImageRenderer {
                             graphics.setColor(horizontalTextColor);
                         }
 
-                        String trimmedValue = ExcelUtils.trimTextToFit(cellValue, metrics, colWidth - TEXT_MARGIN);
-                        int textX = x + (colWidth - metrics.stringWidth(trimmedValue)) / 2;
-                        graphics.drawString(trimmedValue, textX, textY);
+                        List<String> wrappedLines = wrapTextByWidth(cellValue, metrics, colWidth - TEXT_MARGIN * 2);
+                        for (int lineIndex = 0; lineIndex < wrappedLines.size(); lineIndex++) {
+                            String line = wrappedLines.get(lineIndex);
+                            int lineY = y + CELL_TEXT_OFFSET + (lineIndex * WRAP_LINE_HEIGHT_OFFSET);
+                            int textX = x + (colWidth - metrics.stringWidth(line)) / 2;
+                            graphics.drawString(line, textX, lineY);
+                        }
                     }
 
                     graphics.setColor(cellBorderColor);
@@ -274,9 +279,10 @@ public class ImageRendererImpl implements ImageRenderer {
                 String cellValue = ExcelUtils.getCellValueAsString(cell);
                 if (cellValue != null && !cellValue.isEmpty()) {
                     FontMetrics metrics = graphics.getFontMetrics();
-                    String trimmedValue = ExcelUtils.trimTextToFit(cellValue, metrics, colWidth - TEXT_MARGIN);
-                    int textX = x + (colWidth - metrics.stringWidth(trimmedValue)) / 2;
-                    graphics.drawString(trimmedValue, textX, y);
+                    List<String> wrappedLines = wrapTextByWidth(cellValue, metrics, colWidth - TEXT_MARGIN * 2);
+                    String firstLine = wrappedLines.get(0);
+                    int textX = x + (colWidth - metrics.stringWidth(firstLine)) / 2;
+                    graphics.drawString(firstLine, textX, y);
                 }
             }
         }
@@ -303,8 +309,7 @@ public class ImageRendererImpl implements ImageRenderer {
         Font footerFont = new Font(fontName, Font.ITALIC, 10);
         graphics.setFont(footerFont);
 
-        String footerText = FOOTER_PREFIX +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
+        String footerText = FOOTER_PREFIX + LocalDateTime.now().format(DATE_TIME_FORMATTER);
 
         FontMetrics footerMetrics = graphics.getFontMetrics();
         int footerX = (imageWidth - footerMetrics.stringWidth(footerText)) / 2;
@@ -342,7 +347,7 @@ public class ImageRendererImpl implements ImageRenderer {
     }
 
     /**
-     * Рассчитывает оптимальную ширину столбца на основе содержимого.
+     * Рассчитывает оптимальную ширину столбца на основе содержимого с учетом переноса текста.
      *
      * @param sheet лист Excel
      * @param columnIndices индексы столбцов
@@ -368,8 +373,15 @@ public class ImageRendererImpl implements ImageRenderer {
                         Cell cell = row.getCell(colIdx);
                         String cellValue = ExcelUtils.getCellValueAsString(cell);
                         if (cellValue != null && !cellValue.isEmpty()) {
-                            int textWidth = metrics.stringWidth(cellValue);
-                            columnMaxWidth = Math.max(columnMaxWidth, textWidth + TEXT_MARGIN * 2);
+                            List<String> wrappedLines = wrapTextByLength(cellValue);
+                            int maxLineWidth = 0;
+                            for (String line : wrappedLines) {
+                                int lineWidth = metrics.stringWidth(line);
+                                if (lineWidth > maxLineWidth) {
+                                    maxLineWidth = lineWidth;
+                                }
+                            }
+                            columnMaxWidth = Math.max(columnMaxWidth, maxLineWidth + TEXT_MARGIN * 2);
                         }
                     }
                 }
@@ -383,5 +395,83 @@ public class ImageRendererImpl implements ImageRenderer {
         }
 
         return Math.min(maxWidth, MAX_COLUMN_WIDTH);
+    }
+
+    /**
+     * Разбивает текст на строки по максимальной длине (15 символов).
+     *
+     * @param text исходный текст
+     * @return список строк с переносами
+     */
+    private List<String> wrapTextByLength(String text) {
+        List<String> lines = new java.util.ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return lines;
+        }
+
+        if (text.length() <= MAX_TEXT_LENGTH_BEFORE_WRAP) {
+            lines.add(text);
+            return lines;
+        }
+
+        int start = 0;
+        while (start < text.length()) {
+            int end = Math.min(start + MAX_TEXT_LENGTH_BEFORE_WRAP, text.length());
+            if (end < text.length() && text.charAt(end) != ' ') {
+                int lastSpace = text.lastIndexOf(' ', end);
+                if (lastSpace > start) {
+                    end = lastSpace;
+                }
+            }
+            lines.add(text.substring(start, end).trim());
+            start = end;
+        }
+
+        return lines;
+    }
+
+    /**
+     * Разбивает текст на строки по максимальной ширине.
+     *
+     * @param text исходный текст
+     * @param metrics метрики шрифта
+     * @param maxWidth максимальная ширина в пикселях
+     * @return список строк с переносами
+     */
+    private List<String> wrapTextByWidth(String text, FontMetrics metrics, int maxWidth) {
+        List<String> lines = new java.util.ArrayList<>();
+        if (text == null || text.isEmpty() || metrics.stringWidth(text) <= maxWidth) {
+            if (text != null && !text.isEmpty()) {
+                lines.add(text);
+            }
+            return lines;
+        }
+
+        String[] words = text.split("\\s+");
+        StringBuilder currentLine = new StringBuilder();
+
+        for (String word : words) {
+            String testLine = currentLine.length() > 0 ? currentLine + " " + word : word;
+            if (metrics.stringWidth(testLine) <= maxWidth) {
+                currentLine.append(currentLine.length() > 0 ? " " : "").append(word);
+            } else {
+                if (currentLine.length() > 0) {
+                    lines.add(currentLine.toString());
+                }
+                if (metrics.stringWidth(word) <= maxWidth) {
+                    currentLine = new StringBuilder(word);
+                } else {
+                    List<String> wrappedByLength = wrapTextByLength(word);
+                    lines.addAll(wrappedByLength);
+                    currentLine = new StringBuilder();
+                }
+            }
+        }
+
+        if (currentLine.length() > 0) {
+            lines.add(currentLine.toString());
+        }
+
+        return lines;
     }
 }

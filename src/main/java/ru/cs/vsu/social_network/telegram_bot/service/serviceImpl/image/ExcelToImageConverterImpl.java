@@ -12,13 +12,13 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Реализация конвертера Excel файлов в изображения с использованием Apache POI Cell.
@@ -46,7 +46,15 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
     @Value("${training.image.enable.hd.scaling:true}")
     private boolean enableHDScaling;
 
+    @Value("${training.image.cache.enabled:true}")
+    private boolean cacheEnabled;
+
     private final ImageRendererImpl imageRenderer;
+    private final Map<String, SoftReference<BufferedImage>> imageCache = new ConcurrentHashMap<>();
+    private final Map<Integer, Integer> columnWidthCache = new ConcurrentHashMap<>();
+
+    private final static int BASE_COLUMN_WIDTH = 80;
+    private static final int ANALYSIS_BUFFER_MULTIPLIER = 2;
 
     /**
      * Конструктор для внедрения зависимости рендерера изображений.
@@ -64,6 +72,16 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
 
         ExcelUtils.validateExcelFile(excelFile);
 
+        String cacheKey = generateCacheKey(excelFile);
+        if (cacheEnabled) {
+            SoftReference<BufferedImage> cachedRef = imageCache.get(cacheKey);
+            BufferedImage cachedImage = cachedRef != null ? cachedRef.get() : null;
+            if (cachedImage != null) {
+                log.info("EXCEL_КОНВЕРТАЦИЯ_КЭШ_ИЗОБРАЖЕНИЯ: используем кэшированное изображение");
+                return cachedImage;
+            }
+        }
+
         try (InputStream inputStream = new FileInputStream(excelFile)) {
             Workbook workbook = ExcelUtils.createWorkbook(excelFile, inputStream);
 
@@ -71,7 +89,14 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
                 log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ОБРАБОТКА: листов в книге {}", workbook.getNumberOfSheets());
 
                 Sheet sheet = ExcelUtils.getFirstSheet(workbook);
-                return renderSheetToImageOptimized(sheet);
+                BufferedImage result = renderSheetToImageOptimized(sheet);
+
+                if (cacheEnabled) {
+                    imageCache.put(cacheKey, new SoftReference<>(result));
+                    log.info("EXCEL_КОНВЕРТАЦИЯ_КЭШ_СОХРАНЕНИЕ: изображение сохранено в кэш, ключ: {}", cacheKey);
+                }
+
+                return result;
 
             } finally {
                 workbook.close();
@@ -101,6 +126,16 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
     }
 
     /**
+     * Генерирует ключ для кэширования изображения.
+     *
+     * @param excelFile файл Excel
+     * @return ключ кэша
+     */
+    private String generateCacheKey(File excelFile) {
+        return excelFile.getAbsolutePath() + "_" + excelFile.lastModified();
+    }
+
+    /**
      * Оптимизированный метод рендеринга листа в изображение.
      *
      * @param sheet лист Excel для рендеринга
@@ -119,16 +154,16 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         if (actualRows > maxRows) {
             log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_БОЛЬШАЯ: строк {} > {} будет обрезано", actualRows, maxRows);
             actualRows = Math.min(actualRows, maxRows);
-            nonEmptyRowIndices = nonEmptyRowIndices.subList(0, actualRows);
+            nonEmptyRowIndices = nonEmptyRowIndices.subList(0, Math.min(actualRows, nonEmptyRowIndices.size()));
         }
 
         if (actualColumns > maxColumns) {
             log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ: колонок {} > {} будет обрезано", actualColumns, maxColumns);
             actualColumns = Math.min(actualColumns, maxColumns);
-            nonEmptyColumnIndices = nonEmptyColumnIndices.subList(0, actualColumns);
+            nonEmptyColumnIndices = nonEmptyColumnIndices.subList(0, Math.min(actualColumns, nonEmptyColumnIndices.size()));
         }
 
-        int columnWidth = imageRenderer.calculateOptimalColumnWidth(sheet, nonEmptyColumnIndices, sampleRows);
+        int columnWidth = calculateOptimalColumnWidthCached(sheet, nonEmptyColumnIndices);
         int tableWidth = columnWidth * actualColumns;
         int tableHeight = imageRenderer.getHeaderHeight() + (actualRows * imageRenderer.getCellHeight()) +
                 imageRenderer.getFooterHeight() + (2 * imageRenderer.getPadding());
@@ -310,12 +345,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             return image;
 
         } finally {
-            try {
-                Files.deleteIfExists(tempFile);
-                log.debug("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА: временный файл удален");
-            } catch (IOException e) {
-                log.warn("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА_ОШИБКА: не удалось удалить временный файл: {}", e.getMessage());
-            }
+            cleanupTempFileAsync(tempFile);
         }
     }
 
@@ -356,12 +386,13 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
 
     /**
      * Анализирует лист Excel с оптимизацией пустых столбцов и строк.
+     * Возвращает только непустые строки и столбцы.
      *
      * @param sheet лист Excel для анализа
      * @return результат анализа листа
      */
     private SheetAnalysisResult analyzeSheetWithOptimization(Sheet sheet) {
-        int totalRows = Math.min(sheet.getLastRowNum() + 1, maxRows * 2);
+        int totalRows = Math.min(sheet.getLastRowNum() + 1, maxRows * ANALYSIS_BUFFER_MULTIPLIER);
         List<Integer> nonEmptyRowIndices = new ArrayList<>();
         Set<Integer> nonEmptyColumnSet = new HashSet<>();
         int firstDataColumn = Integer.MAX_VALUE;
@@ -407,20 +438,50 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
     }
 
     /**
+     * Вычисляет оптимальную ширину столбцов с кэшированием.
+     *
+     * @param sheet лист Excel
+     * @param columnIndices индексы столбцов
+     * @return средняя ширина столбца
+     */
+    private int calculateOptimalColumnWidthCached(Sheet sheet, List<Integer> columnIndices) {
+        int totalWidth = 0;
+        int columnCount = columnIndices.size();
+
+        if (columnCount == 0) {
+            return BASE_COLUMN_WIDTH;
+        }
+
+        for (int colIndex : columnIndices) {
+            totalWidth += columnWidthCache.computeIfAbsent(colIndex,
+                    idx -> imageRenderer.calculateOptimalColumnWidth(sheet, Collections.singletonList(idx), sampleRows));
+        }
+        return totalWidth / columnCount;
+    }
+
+    /**
+     * Асинхронная очистка временного файла.
+     *
+     * @param tempFile временный файл
+     */
+    private void cleanupTempFileAsync(Path tempFile) {
+        new Thread(() -> {
+            try {
+                Thread.sleep(5000);
+                Files.deleteIfExists(tempFile);
+                log.debug("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА: временный файл удален");
+            } catch (IOException e) {
+                log.warn("ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОЧИСТКА_ОШИБКА: не удалось удалить временный файл: {}", e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    /**
      * Результат анализа листа Excel.
      */
-    private static class SheetAnalysisResult {
-        final int actualRows;
-        final int actualColumns;
-        final List<Integer> nonEmptyColumnIndices;
-        final List<Integer> nonEmptyRowIndices;
-
-        SheetAnalysisResult(int actualRows, int actualColumns,
-                            List<Integer> nonEmptyColumnIndices, List<Integer> nonEmptyRowIndices) {
-            this.actualRows = actualRows;
-            this.actualColumns = actualColumns;
-            this.nonEmptyColumnIndices = nonEmptyColumnIndices;
-            this.nonEmptyRowIndices = nonEmptyRowIndices;
-        }
+    private record SheetAnalysisResult(int actualRows, int actualColumns, List<Integer> nonEmptyColumnIndices,
+                                       List<Integer> nonEmptyRowIndices) {
     }
 }

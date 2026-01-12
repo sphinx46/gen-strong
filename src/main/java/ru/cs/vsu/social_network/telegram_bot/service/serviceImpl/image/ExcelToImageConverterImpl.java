@@ -1,9 +1,7 @@
 package ru.cs.vsu.social_network.telegram_bot.service.serviceImpl.image;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException;
@@ -12,8 +10,6 @@ import ru.cs.vsu.social_network.telegram_bot.utils.ExcelUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
-import java.awt.Color;
-import java.awt.Font;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.Files;
@@ -25,46 +21,30 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Реализация конвертера Excel файлов в изображения с использованием
- * оптимизированного алгоритма рендеринга для работы с большими таблицами.
- * Использует чанковый рендеринг и рендеринг напрямую в файл для экономии памяти.
+ * Реализация конвертера Excel файлов в изображения с использованием Apache POI Cell.
+ * Оптимизирован для работы с большими таблицами (30x30+) и HD качеством для Telegram.
  */
 @Slf4j
 @Service
 public class ExcelToImageConverterImpl implements ExcelToImageConverter {
 
-    @Value("${training.image.cell.height:80}")
-    private int cellHeight;
-
-    @Value("${training.image.header.height:100}")
-    private int headerHeight;
-
-    @Value("${training.image.footer.height:50}")
-    private int footerHeight;
-
-    @Value("${training.image.padding:40}")
-    private int padding;
-
-    @Value("${training.image.min.column.width:120}")
-    private int minColumnWidth;
+    @Value("${training.image.max.rows:100}")
+    private int maxRows;
 
     @Value("${training.image.max.columns:50}")
     private int maxColumns;
 
-    @Value("${training.image.max.rows:200}")
-    private int maxRows;
-
-    @Value("${training.image.optimize.empty.columns:true}")
-    private boolean optimizeEmptyColumns;
-
-    @Value("${training.image.chunk.size:10}")
+    @Value("${training.image.chunk.size:20}")
     private int chunkSize;
-
-    @Value("${training.image.direct.file.rendering.threshold:100}")
-    private int directFileRenderingThreshold;
 
     @Value("${training.image.temp.dir:temp_images}")
     private String tempImageDir;
+
+    @Value("${training.image.sample.rows:30}")
+    private int sampleRows;
+
+    @Value("${training.image.enable.hd.scaling:true}")
+    private boolean enableHDScaling;
 
     private final ImageRendererImpl imageRenderer;
 
@@ -85,12 +65,12 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         ExcelUtils.validateExcelFile(excelFile);
 
         try (InputStream inputStream = new FileInputStream(excelFile)) {
-            Workbook workbook = createWorkbook(excelFile, inputStream);
+            Workbook workbook = ExcelUtils.createWorkbook(excelFile, inputStream);
 
             try {
                 log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ОБРАБОТКА: листов в книге {}", workbook.getNumberOfSheets());
 
-                Sheet sheet = getFirstSheet(workbook);
+                Sheet sheet = ExcelUtils.getFirstSheet(workbook);
                 return renderSheetToImageOptimized(sheet);
 
             } finally {
@@ -122,7 +102,6 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
 
     /**
      * Оптимизированный метод рендеринга листа в изображение.
-     * Использует различные стратегии в зависимости от размера таблицы.
      *
      * @param sheet лист Excel для рендеринга
      * @return изображение таблицы
@@ -149,48 +128,48 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             nonEmptyColumnIndices = nonEmptyColumnIndices.subList(0, actualColumns);
         }
 
-        int columnWidth = calculateOptimalColumnWidth(sheet, nonEmptyColumnIndices, nonEmptyRowIndices);
+        int columnWidth = imageRenderer.calculateOptimalColumnWidth(sheet, nonEmptyColumnIndices, sampleRows);
         int tableWidth = columnWidth * actualColumns;
+        int tableHeight = imageRenderer.getHeaderHeight() + (actualRows * imageRenderer.getCellHeight()) +
+                imageRenderer.getFooterHeight() + (2 * imageRenderer.getPadding());
 
-        if (tableWidth > 8000) {
-            log.warn("EXCEL_КОНВЕРТАЦИЯ_ТАБЛИЦА_СЛИШКОМ_ШИРОКАЯ: {}px применяем масштабирование", tableWidth);
-            double scale = 8000.0 / tableWidth;
-            columnWidth = (int) (columnWidth * scale);
-            tableWidth = columnWidth * actualColumns;
-            log.info("EXCEL_КОНВЕРТАЦИЯ_МАСШТАБИРОВАНИЕ_ШИРИНЫ: коэффициент {} новая ширина столбца {}px", scale, columnWidth);
+        if (enableHDScaling) {
+            Dimension hdSize = imageRenderer.calculateHDSize(tableWidth, tableHeight);
+            double widthScale = (double) hdSize.width / tableWidth;
+            double heightScale = (double) hdSize.height / tableHeight;
+            double scale = Math.min(widthScale, heightScale);
+
+            if (scale < 1.0) {
+                columnWidth = (int) (columnWidth * scale);
+                tableWidth = columnWidth * actualColumns;
+                log.info("EXCEL_КОНВЕРТАЦИЯ_HD_МАСШТАБИРОВАНИЕ: коэффициент {} новая ширина столбца {}px", scale, columnWidth);
+            }
         }
 
-        int imageWidth = Math.min(tableWidth + (2 * padding), 9000);
-        int imageHeight = headerHeight + (actualRows * cellHeight) + footerHeight + (2 * padding);
+        int imageWidth = tableWidth + (2 * imageRenderer.getPadding());
+        int imageHeight = tableHeight;
 
-        long estimatedMemory = (long) imageWidth * imageHeight * 4L;
-        log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_ПАМЯТИ требуется примерно {} байт для {}x{}", estimatedMemory, imageWidth, imageHeight);
+        log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_РАЗМЕРОВ: изображение {}x{} таблица {}px столбец {}px",
+                imageWidth, imageHeight, tableWidth, columnWidth);
 
-        if (estimatedMemory > 100_000_000L || actualRows > directFileRenderingThreshold) {
+        if (imageWidth * imageHeight > 50_000_000) {
             log.info("EXCEL_КОНВЕРТАЦИЯ_РЕЖИМ_ФАЙЛОВОГО_РЕНДЕРИНГА: использование рендеринга напрямую в файл");
             try {
                 return renderToFileAndLoad(sheet, actualColumns, actualRows, imageWidth, imageHeight,
                         columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
             } catch (IOException e) {
                 log.warn("EXCEL_КОНВЕРТАЦИЯ_ФАЙЛОВЫЙ_РЕНДЕРИНГ_ОШИБКА: возвращаемся к чанковому рендерингу: {}", e.getMessage());
+                return renderImageChunked(sheet, actualColumns, actualRows, imageWidth, imageHeight,
+                        columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
             }
         }
-
-        if (estimatedMemory > 50_000_000L) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_БЕЗОПАСНЫЙ_РЕЖИМ: использование чанковой отрисовки");
-            return renderImageChunked(sheet, actualColumns, actualRows, imageWidth, imageHeight,
-                    columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
-        }
-
-        log.info("EXCEL_КОНВЕРТАЦИЯ_РАСЧЕТ_РАЗМЕРОВ: изображение {}x{} таблица {}px столбец {}px",
-                imageWidth, imageHeight, tableWidth, columnWidth);
 
         return renderImageDirect(sheet, actualColumns, actualRows, imageWidth, imageHeight,
                 columnWidth, nonEmptyColumnIndices, nonEmptyRowIndices);
     }
 
     /**
-     * Оптимизированный прямой рендеринг в память.
+     * Прямой рендеринг в память.
      *
      * @param sheet лист Excel
      * @param columnCount количество столбцов
@@ -209,7 +188,6 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         Graphics2D graphics = image.createGraphics();
 
         try {
-            ExcelUtils.configureGraphicsQuality(graphics);
             imageRenderer.drawImageContent(graphics, sheet, columnCount, rowCount, imageHeight, imageWidth,
                     columnWidth, columnIndices, rowIndices);
         } finally {
@@ -249,36 +227,31 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             imageRenderer.drawHeader(graphics, imageWidth);
 
             int tableWidth = columnWidth * columnCount;
-            int tableStartY = headerHeight + padding;
-            int tableStartX = padding;
+            int tableStartY = imageRenderer.getHeaderHeight() + imageRenderer.getPadding();
+            int tableStartX = imageRenderer.getPadding();
 
-            if (tableWidth + (2 * padding) > imageWidth) {
+            if (tableWidth + (2 * imageRenderer.getPadding()) > imageWidth) {
                 tableStartX = (imageWidth - tableWidth) / 2;
             }
 
-            imageRenderer.drawTableHeader(graphics, sheet, tableWidth, columnWidth, tableStartY, columnCount, tableStartX, columnIndices);
-
-            Font cellFont = new Font("Arial", Font.PLAIN, 18);
-            graphics.setFont(cellFont);
+            imageRenderer.drawTableHeader(graphics, sheet, tableWidth, columnWidth, tableStartY,
+                    columnCount, tableStartX, columnIndices);
 
             int actualChunkSize = Math.min(chunkSize, rowCount);
 
             for (int chunkStart = 0; chunkStart < rowCount; chunkStart += actualChunkSize) {
                 int chunkEnd = Math.min(chunkStart + actualChunkSize, rowCount);
+                List<Integer> chunkRowIndices = rowIndices.subList(chunkStart, chunkEnd);
 
-                for (int i = chunkStart; i < chunkEnd && i < rowIndices.size(); i++) {
-                    drawSingleRow(graphics, sheet, rowIndices.get(i), i, tableStartX, tableStartY,
-                            tableWidth, columnWidth, columnCount, columnIndices, cellFont);
-                }
+                imageRenderer.drawTableRows(graphics, sheet, tableWidth, columnWidth, tableStartY,
+                        chunkEnd - chunkStart, columnCount, tableStartX,
+                        columnIndices, chunkRowIndices);
 
                 if (chunkStart > 0 && chunkStart % 50 == 0) {
                     System.gc();
                     log.debug("ЧАНКОВЫЙ_РЕНДЕРИНГ_ПРОГРЕСС: обработано {} строк из {}", chunkStart, rowCount);
                 }
             }
-
-            drawTableGrid(graphics, tableStartX, tableStartY, tableWidth, columnWidth,
-                    columnCount, rowCount, cellHeight);
 
             imageRenderer.drawFooter(graphics, imageHeight, imageWidth);
 
@@ -288,104 +261,6 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
 
         log.info("ЧАНКОВЫЙ_РЕНДЕРИНГ_УСПЕХ: изображение создано");
         return image;
-    }
-
-    /**
-     * Рисует одиночную строку таблицы.
-     *
-     * @param graphics контекст графики
-     * @param sheet лист Excel
-     * @param rowIndex индекс строки в Excel
-     * @param displayIndex индекс отображения строки
-     * @param tableStartX начальная X координата таблицы
-     * @param tableStartY начальная Y координата таблицы
-     * @param tableWidth ширина таблицы
-     * @param columnWidth ширина столбца
-     * @param columnCount количество столбцов
-     * @param columnIndices индексы столбцов
-     * @param cellFont шрифт для ячеек
-     */
-    private void drawSingleRow(Graphics2D graphics, Sheet sheet, int rowIndex, int displayIndex,
-                               int tableStartX, int tableStartY, int tableWidth, int columnWidth,
-                               int columnCount, List<Integer> columnIndices, Font cellFont) {
-        Row row = sheet.getRow(rowIndex);
-        int y = tableStartY + (displayIndex + 1) * cellHeight;
-
-        Color rowColor = (displayIndex % 2 == 0) ? imageRenderer.getOddRowColor() : imageRenderer.getEvenRowColor();
-        graphics.setColor(rowColor);
-        graphics.fillRect(tableStartX, y, tableWidth, cellHeight);
-
-        graphics.setColor(imageRenderer.getCellBorderColor());
-        graphics.drawRect(tableStartX, y, tableWidth, cellHeight);
-
-        if (row != null) {
-            for (int j = 0; j < columnCount && j < columnIndices.size(); j++) {
-                drawSingleCell(graphics, row, columnIndices.get(j), j, tableStartX, y, columnWidth, cellFont);
-            }
-        }
-    }
-
-    /**
-     * Рисует одиночную ячейку таблицы.
-     *
-     * @param graphics контекст графики
-     * @param row строка Excel
-     * @param columnIndex индекс столбца в Excel
-     * @param displayColumnIndex индекс отображения столбца
-     * @param tableStartX начальная X координата таблицы
-     * @param y Y координата строки
-     * @param columnWidth ширина столбца
-     * @param cellFont шрифт для ячеек
-     */
-    private void drawSingleCell(Graphics2D graphics, Row row, int columnIndex, int displayColumnIndex,
-                                int tableStartX, int y, int columnWidth, Font cellFont) {
-        Cell cell = row.getCell(columnIndex);
-        int x = tableStartX + displayColumnIndex * columnWidth;
-        int textY = y + cellHeight - 15;
-
-        String cellValue = ExcelUtils.getCellValueAsString(cell);
-        if (cellValue != null && !cellValue.isEmpty()) {
-            FontMetrics metrics = graphics.getFontMetrics(cellFont);
-
-            if (displayColumnIndex == 0) {
-                graphics.setColor(imageRenderer.getVerticalTextColor());
-            } else {
-                graphics.setColor(imageRenderer.getHorizontalTextColor());
-            }
-
-            String trimmedValue = ExcelUtils.trimTextToFit(cellValue, metrics, columnWidth - 20);
-            int textX = x + (columnWidth - metrics.stringWidth(trimmedValue)) / 2;
-            graphics.drawString(trimmedValue, textX, textY);
-        }
-
-        graphics.setColor(imageRenderer.getCellBorderColor());
-        graphics.drawLine(x, y, x, y + cellHeight);
-    }
-
-    /**
-     * Рисует сетку таблицы.
-     *
-     * @param graphics контекст графики
-     * @param tableStartX начальная X координата таблицы
-     * @param tableStartY начальная Y координата таблицы
-     * @param tableWidth ширина таблицы
-     * @param columnWidth ширина столбца
-     * @param columnCount количество столбцов
-     * @param rowCount количество строк
-     * @param cellHeight высота ячейки
-     */
-    private void drawTableGrid(Graphics2D graphics, int tableStartX, int tableStartY,
-                               int tableWidth, int columnWidth, int columnCount,
-                               int rowCount, int cellHeight) {
-        for (int j = 0; j <= columnCount; j++) {
-            int x = tableStartX + j * columnWidth;
-            graphics.drawLine(x, tableStartY, x, tableStartY + (rowCount + 1) * cellHeight);
-        }
-
-        for (int i = 0; i <= rowCount; i++) {
-            int y = tableStartY + (i + 1) * cellHeight;
-            graphics.drawLine(tableStartX, y, tableStartX + tableWidth, y);
-        }
     }
 
     /**
@@ -465,7 +340,6 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
         Graphics2D graphics = fullImage.createGraphics();
 
         try {
-            ExcelUtils.configureGraphicsQuality(graphics);
             imageRenderer.drawImageContent(graphics, sheet, columnCount, rowCount, imageHeight, imageWidth,
                     columnWidth, columnIndices, rowIndices);
         } finally {
@@ -487,7 +361,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
      * @return результат анализа листа
      */
     private SheetAnalysisResult analyzeSheetWithOptimization(Sheet sheet) {
-        int totalRows = Math.min(sheet.getLastRowNum() + 1, maxRows);
+        int totalRows = Math.min(sheet.getLastRowNum() + 1, maxRows * 2);
         List<Integer> nonEmptyRowIndices = new ArrayList<>();
         Set<Integer> nonEmptyColumnSet = new HashSet<>();
         int firstDataColumn = Integer.MAX_VALUE;
@@ -497,7 +371,7 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             Row row = sheet.getRow(i);
             if (row != null) {
                 boolean rowHasData = false;
-                int lastCellNum = row.getLastCellNum();
+                int lastCellNum = Math.min(row.getLastCellNum(), maxColumns * 2);
                 for (int j = 0; j < lastCellNum; j++) {
                     Cell cell = row.getCell(j);
                     if (ExcelUtils.hasCellContent(cell)) {
@@ -522,107 +396,14 @@ public class ExcelToImageConverterImpl implements ExcelToImageConverter {
             lastDataColumn = Math.max(0, firstDataColumn);
         }
 
-        if (optimizeEmptyColumns) {
-            for (int i = firstDataColumn; i <= lastDataColumn && i <= maxColumns; i++) {
-                nonEmptyColumnIndices.add(i);
-            }
-        } else {
-            for (int i = 0; i <= Math.min(lastDataColumn, maxColumns); i++) {
-                nonEmptyColumnIndices.add(i);
-            }
+        for (int i = firstDataColumn; i <= lastDataColumn && i <= maxColumns * 2; i++) {
+            nonEmptyColumnIndices.add(i);
         }
 
         int actualRows = Math.min(nonEmptyRowIndices.size(), maxRows);
         int actualColumns = Math.min(nonEmptyColumnIndices.size(), maxColumns);
 
         return new SheetAnalysisResult(actualRows, actualColumns, nonEmptyColumnIndices, nonEmptyRowIndices);
-    }
-
-    /**
-     * Рассчитывает оптимальную ширину столбцов на основе содержимого ячеек.
-     *
-     * @param sheet лист Excel
-     * @param columnIndices индексы столбцов для анализа
-     * @param rowIndices индексы строк для анализа
-     * @return оптимальная ширина столбца в пикселях
-     */
-    private int calculateOptimalColumnWidth(Sheet sheet, List<Integer> columnIndices, List<Integer> rowIndices) {
-        int maxCellWidth = minColumnWidth;
-        Font tempFont = new Font("Arial", Font.BOLD, 18);
-
-        try {
-            BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            Graphics2D tempGraphics = tempImage.createGraphics();
-            tempGraphics.setFont(tempFont);
-            FontMetrics metrics = tempGraphics.getFontMetrics();
-
-            int rowsToAnalyze = Math.min(rowIndices.size(), 30);
-            int columnsToAnalyze = Math.min(columnIndices.size(), 30);
-
-            for (int i = 0; i < rowsToAnalyze && i < rowIndices.size(); i++) {
-                int rowIndex = rowIndices.get(i);
-                Row row = sheet.getRow(rowIndex);
-                if (row != null) {
-                    for (int j = 0; j < columnsToAnalyze && j < columnIndices.size(); j++) {
-                        int colIndex = columnIndices.get(j);
-                        Cell cell = row.getCell(colIndex);
-                        String cellValue = ExcelUtils.getCellValueAsString(cell);
-                        if (cellValue != null && !cellValue.isEmpty()) {
-                            int textWidth = metrics.stringWidth(cellValue);
-                            maxCellWidth = Math.max(maxCellWidth, textWidth + 30);
-                        }
-                    }
-                }
-            }
-
-            tempGraphics.dispose();
-        } catch (Exception e) {
-            log.warn("ОПТИМАЛЬНАЯ_ШИРИНА_СТОЛБЦА_ОШИБКА {}", e.getMessage());
-            return minColumnWidth;
-        }
-
-        return Math.min(maxCellWidth, 350);
-    }
-
-    /**
-     * Создает объект Workbook в зависимости от формата файла.
-     *
-     * @param excelFile Excel файл
-     * @param inputStream поток данных файла
-     * @return объект Workbook
-     * @throws IOException если произошла ошибка чтения файла
-     */
-    private Workbook createWorkbook(File excelFile, InputStream inputStream) throws IOException {
-        if (excelFile.getName().toLowerCase().endsWith(".xlsx")) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ФОРМАТ: XLSX");
-            return new XSSFWorkbook(inputStream);
-        } else if (excelFile.getName().toLowerCase().endsWith(".xls")) {
-            log.info("EXCEL_КОНВЕРТАЦИЯ_EXCEL_ФОРМАТ: XLS");
-            return new HSSFWorkbook(inputStream);
-        } else {
-            log.error("EXCEL_КОНВЕРТАЦИЯ_НЕПОДДЕРЖИВАЕМЫЙ_ФОРМАТ {}", excelFile.getName());
-            throw new GenerateTrainingPlanException("Неподдерживаемый формат Excel файла");
-        }
-    }
-
-    /**
-     * Получает первый лист из книги.
-     *
-     * @param workbook книга Excel
-     * @return первый лист книги
-     */
-    private Sheet getFirstSheet(Workbook workbook) {
-        if (workbook.getNumberOfSheets() == 0) {
-            log.error("EXCEL_КОНВЕРТАЦИЯ_ПУСТАЯ_КНИГА: нет листов");
-            throw new GenerateTrainingPlanException("Excel файл не содержит листов");
-        }
-
-        Sheet sheet = workbook.getSheetAt(0);
-        if (sheet == null) {
-            log.error("EXCEL_КОНВЕРТАЦИЯ_ЛИСТ_НЕ_НАЙДЕН");
-            throw new GenerateTrainingPlanException("Первый лист не найден");
-        }
-        return sheet;
     }
 
     /**

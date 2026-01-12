@@ -8,10 +8,8 @@ import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanExcep
 
 import javax.imageio.ImageIO;
 import java.awt.*;
-import java.awt.Font;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.nio.file.Path;
 
 /**
  * Утилитарный класс для работы с Excel файлами и изображениями.
@@ -59,20 +57,14 @@ public class ExcelUtils {
     public static boolean hasCellContent(Cell cell) {
         if (cell == null) return false;
 
-        switch (cell.getCellType()) {
-            case STRING:
+        return switch (cell.getCellType()) {
+            case STRING -> {
                 String stringValue = cell.getStringCellValue();
-                return stringValue != null && !stringValue.trim().isEmpty();
-            case NUMERIC:
-                return true;
-            case BOOLEAN:
-                return true;
-            case FORMULA:
-                return true;
-            case BLANK:
-            default:
-                return false;
-        }
+                yield stringValue != null && !stringValue.trim().isEmpty();
+            }
+            case NUMERIC, BOOLEAN, FORMULA -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -271,163 +263,5 @@ public class ExcelUtils {
             }
         }
         return maxColumns;
-    }
-
-    /**
-     * Анализирует ячейки листа для определения диапазона данных.
-     *
-     * @param sheet лист Excel
-     * @return массив с минимальной и максимальной строкой и столбцом
-     */
-    public static int[] getDataRange(Sheet sheet) {
-        int minRow = Integer.MAX_VALUE;
-        int maxRow = -1;
-        int minCol = Integer.MAX_VALUE;
-        int maxCol = -1;
-
-        for (Row row : sheet) {
-            if (row != null) {
-                int rowNum = row.getRowNum();
-                if (rowNum < minRow) minRow = rowNum;
-                if (rowNum > maxRow) maxRow = rowNum;
-
-                for (Cell cell : row) {
-                    if (cell != null && hasCellContent(cell)) {
-                        int colNum = cell.getColumnIndex();
-                        if (colNum < minCol) minCol = colNum;
-                        if (colNum > maxCol) maxCol = colNum;
-                    }
-                }
-            }
-        }
-
-        if (minRow == Integer.MAX_VALUE) minRow = 0;
-        if (maxRow == -1) maxRow = 0;
-        if (minCol == Integer.MAX_VALUE) minCol = 0;
-        if (maxCol == -1) maxCol = 0;
-
-        return new int[]{minRow, maxRow, minCol, maxCol};
-    }
-
-    /**
-     * Вычисляет ширину столбца на основе содержимого ячеек.
-     *
-     * @param sheet лист Excel
-     * @param columnIndices индексы столбцов
-     * @param rowIndices индексы строк
-     * @param minColumnWidth минимальная ширина столбца
-     * @return оптимальная ширина столбца
-     */
-    public static int calculateOptimalColumnWidth(Sheet sheet, java.util.List<Integer> columnIndices,
-                                                  java.util.List<Integer> rowIndices, int minColumnWidth) {
-        int maxCellWidth = minColumnWidth;
-        Font tempFont = new Font("Arial", Font.BOLD, 18);
-
-        try {
-            BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            Graphics2D tempGraphics = tempImage.createGraphics();
-            tempGraphics.setFont(tempFont);
-            FontMetrics metrics = tempGraphics.getFontMetrics();
-
-            int rowsToAnalyze = Math.min(rowIndices.size(), 30);
-            int columnsToAnalyze = Math.min(columnIndices.size(), 30);
-
-            for (int i = 0; i < rowsToAnalyze && i < rowIndices.size(); i++) {
-                int rowIndex = rowIndices.get(i);
-                Row row = sheet.getRow(rowIndex);
-                if (row != null) {
-                    for (int j = 0; j < columnsToAnalyze && j < columnIndices.size(); j++) {
-                        int colIndex = columnIndices.get(j);
-                        Cell cell = row.getCell(colIndex);
-                        String cellValue = getCellValueAsString(cell);
-                        if (cellValue != null && !cellValue.isEmpty()) {
-                            int textWidth = metrics.stringWidth(cellValue);
-                            maxCellWidth = Math.max(maxCellWidth, textWidth + 30);
-                        }
-                    }
-                }
-            }
-
-            tempGraphics.dispose();
-        } catch (Exception e) {
-            log.warn("EXCEL_УТИЛИТЫ_ОПТИМАЛЬНАЯ_ШИРИНА_ОШИБКА {}", e.getMessage());
-            return minColumnWidth;
-        }
-
-        return Math.min(maxCellWidth, 350);
-    }
-
-    /**
-     * Создает временный файл для работы с изображением.
-     *
-     * @param prefix префикс имени файла
-     * @param suffix суффикс имени файла
-     * @param tempDir директория для временных файлов
-     * @return путь к созданному временному файлу
-     * @throws IOException если не удалось создать файл
-     */
-    public static Path createTempFile(String prefix, String suffix, String tempDir) throws IOException {
-        java.nio.file.Path tempDirPath = java.nio.file.Paths.get(tempDir);
-        if (!java.nio.file.Files.exists(tempDirPath)) {
-            java.nio.file.Files.createDirectories(tempDirPath);
-            log.info("EXCEL_УТИЛИТЫ_ДИРЕКТОРИЯ_СОЗДАНА {}", tempDirPath.toAbsolutePath());
-        }
-
-        String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String filename = String.format("%s_%s_%s", prefix, timestamp, suffix);
-        return tempDirPath.resolve(filename);
-    }
-
-    /**
-     * Удаляет временный файл с логированием.
-     *
-     * @param file файл для удаления
-     */
-    public static void deleteTempFile(File file) {
-        if (file != null && file.exists()) {
-            log.info("EXCEL_УТИЛИТЫ_УДАЛЕНИЕ_ВРЕМЕННОГО_ФАЙЛА {}", file.getAbsolutePath());
-            if (file.delete()) {
-                log.info("EXCEL_УТИЛИТЫ_ВРЕМЕННЫЙ_ФАЙЛ_УДАЛЕН");
-            } else {
-                log.warn("EXCEL_УТИЛИТЫ_ВРЕМЕННЫЙ_ФАЙЛ_НЕ_УДАЛЕН требуется ручное удаление");
-            }
-        }
-    }
-
-    /**
-     * Проверяет требования к памяти для обработки таблицы.
-     *
-     * @param rows количество строк
-     * @param columns количество столбцов
-     * @param cellHeight высота ячейки
-     * @param warningThreshold порог предупреждения в байтах
-     */
-    public static void checkMemoryRequirements(int rows, int columns, int cellHeight, long warningThreshold) {
-        long estimatedMemory = (long) rows * columns * cellHeight * 120 * 4L;
-        if (estimatedMemory > warningThreshold) {
-            log.warn("EXCEL_УТИЛИТЫ_ПРОВЕРКА_ПАМЯТИ оценка памяти {} байт для {} строк {} колонок",
-                    estimatedMemory, rows, columns);
-            System.gc();
-        }
-    }
-
-    /**
-     * Загружает изображение из файла.
-     *
-     * @param imageFile файл с изображением
-     * @return BufferedImage изображение
-     * @throws IOException если не удалось загрузить изображение
-     */
-    public static BufferedImage loadImageFromFile(File imageFile) throws IOException {
-        log.info("EXCEL_УТИЛИТЫ_ЗАГРУЗКА_ИЗОБРАЖЕНИЯ файл {} размер {} байт",
-                imageFile.getAbsolutePath(), imageFile.length());
-
-        BufferedImage image = ImageIO.read(imageFile);
-        if (image == null) {
-            throw new IOException("Не удалось загрузить изображение из файла: " + imageFile.getAbsolutePath());
-        }
-
-        log.info("EXCEL_УТИЛИТЫ_ИЗОБРАЖЕНИЕ_ЗАГРУЖЕНО размер {}x{}", image.getWidth(), image.getHeight());
-        return image;
     }
 }

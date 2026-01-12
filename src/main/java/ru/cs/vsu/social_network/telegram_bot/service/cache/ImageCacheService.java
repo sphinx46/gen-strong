@@ -5,32 +5,32 @@ import java.io.File;
 
 /**
  * Сервис кэширования изображений.
+ * Оптимизирован для хранения путей к файлам вместо изображений в памяти.
  */
 public interface ImageCacheService {
 
     /**
-     * Получает изображение из кэша.
+     * Получает путь к закэшированному файлу изображения.
      *
      * @param cacheKey ключ кэша
-     * @return изображение или null, если не найдено
+     * @return путь к файлу или null, если не найдено
      */
-    BufferedImage getImageFromCache(String cacheKey);
+    File getImagePathFromCache(String cacheKey);
 
     /**
-     * Сохраняет изображение в кэш.
+     * Сохраняет путь к файлу изображения в кэш.
      *
      * @param cacheKey ключ кэша
-     * @param image    изображение для кэширования
-     * @param filePath путь к файлу
-     * @param width    ширина изображения
-     * @param height   высота изображения
+     * @param imagePath путь к файлу изображения
+     * @param width ширина изображения
+     * @param height высота изображения
      */
-    void cacheImage(String cacheKey, BufferedImage image, String filePath, int width, int height);
+    void cacheImagePath(String cacheKey, File imagePath, int width, int height);
 
     /**
      * Генерирует ключ кэша для файла.
      *
-     * @param excelFile     Excel файл
+     * @param excelFile Excel файл
      * @param maxBenchPress максимальный вес жима лежа
      * @return ключ кэша
      */
@@ -53,7 +53,7 @@ public interface ImageCacheService {
      * когда имя шаблона всегда одинаковое.
      *
      * @param maxBenchPress максимальный вес жима лежа
-     * @param templatePath  путь к шаблону
+     * @param templatePath путь к шаблону
      * @return ключ кэша
      */
     String generateSimpleCacheKey(Double maxBenchPress, String templatePath);

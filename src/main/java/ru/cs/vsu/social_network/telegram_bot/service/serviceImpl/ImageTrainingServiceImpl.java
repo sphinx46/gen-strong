@@ -43,6 +43,9 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     private final ExcelToImageConverter excelToImageConverter;
     private final ImageCacheService imageCacheService;
 
+    /**
+     * Конструктор с внедрением зависимостей.
+     */
     public ImageTrainingServiceImpl(ExcelTrainingService excelTrainingService,
                                     ExcelToImageConverter excelToImageConverter,
                                     ImageCacheService imageCacheService) {
@@ -54,86 +57,82 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     /** {@inheritDoc} */
     @Override
     public File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest) {
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {} жим лежа {} кг",
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {}, жим лежа {} кг",
                 userId, userBenchPressRequest.getMaxBenchPress());
 
+        File excelFile = null;
+        BufferedImage image = null;
+
         try {
+            String cacheKey = imageCacheService.generateSimpleCacheKey(
+                    userBenchPressRequest.getMaxBenchPress(),
+                    templatePath
+            );
+
             if (imageCacheService.isCacheEnabled()) {
-                String simpleCacheKey = imageCacheService.generateSimpleCacheKey(
-                        userBenchPressRequest.getMaxBenchPress(),
-                        templatePath
-                );
+                File cachedFile = imageCacheService.getImagePathFromCache(cacheKey);
+                if (cachedFile != null && cachedFile.exists() && cachedFile.length() > 0) {
+                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПОПАДАНИЕ: файл загружен из кеша, ключ: {}",
+                            cacheKey);
 
-                BufferedImage cachedImage = imageCacheService.getImageFromCache(simpleCacheKey);
+                    File resultFile = createUniqueOutputFile(userId);
+                    Files.copy(cachedFile.toPath(), resultFile.toPath());
 
-                if (cachedImage != null) {
-                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПОПАДАНИЕ: изображение загружено из кеша ключ {}",
-                            simpleCacheKey);
+                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗ_КЕША_СОЗДАНО: файл {}",
+                            resultFile.getAbsolutePath());
 
-                    Path outputPath = createOutputPath(userId);
-                    saveImageToFile(cachedImage, outputPath);
-
-                    log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗ_КЕША_СОЗДАНО: файл {} размер {}x{}",
-                            outputPath.toAbsolutePath(), cachedImage.getWidth(), cachedImage.getHeight());
-
-                    return outputPath.toFile();
+                    return resultFile;
                 } else {
                     log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПРОМАХ: ключ {} не найден в кеше",
-                            simpleCacheKey);
+                            cacheKey);
                 }
             }
 
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ГЕНЕРАЦИЯ: создание Excel файла для пользователя {}", userId);
 
-            File excelFile = excelTrainingService.generateTrainingPlan(userId, userBenchPressRequest);
+            excelFile = excelTrainingService.generateTrainingPlan(userId, userBenchPressRequest);
             validateGeneratedExcelFile(excelFile);
+
+            File resultFile = createUniqueOutputFile(userId);
 
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КОНВЕРТАЦИЯ_В_ИЗОБРАЖЕНИЕ: формат {}", defaultImageFormat);
 
-            BufferedImage image = excelToImageConverter.convertExcelToImage(excelFile, defaultImageFormat);
+            image = excelToImageConverter.convertExcelToImage(excelFile, defaultImageFormat);
             validateGeneratedImage(image);
 
-            Path outputPath = createOutputPath(userId);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_СОХРАНЕНИЕ_ИЗОБРАЖЕНИЯ {}", outputPath.toAbsolutePath());
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_СОХРАНЕНИЕ_ИЗОБРАЖЕНИЯ {}", resultFile.getAbsolutePath());
 
-            saveImageToFile(image, outputPath);
+            ExcelUtils.saveImageWithCompression(image, defaultImageFormat, resultFile);
 
-            long fileSize = Files.size(outputPath);
+            long fileSize = Files.size(resultFile.toPath());
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗОБРАЖЕНИЕ_СОХРАНЕНО: размер {} байт путь {}",
-                    fileSize, outputPath.toAbsolutePath());
-
-            File resultImage = outputPath.toFile();
+                    fileSize, resultFile.getAbsolutePath());
 
             if (imageCacheService.isCacheEnabled()) {
-                String simpleCacheKey = imageCacheService.generateSimpleCacheKey(
-                        userBenchPressRequest.getMaxBenchPress(),
-                        templatePath
-                );
-
-                imageCacheService.cacheImage(
-                        simpleCacheKey,
-                        image,
-                        outputPath.toString(),
+                imageCacheService.cacheImagePath(
+                        cacheKey,
+                        resultFile,
                         image.getWidth(),
                         image.getHeight()
                 );
 
-                log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_СОХРАНЕНО: ключ {}", simpleCacheKey);
+                log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_СОХРАНЕНО: ключ {}", cacheKey);
             }
 
-            ExcelUtils.deleteTempFile(excelFile);
-
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_УСПЕХ: пользователь {} файл {}",
-                    userId, resultImage.getAbsolutePath());
+                    userId, resultFile.getAbsolutePath());
 
-            return resultImage;
+            return resultFile;
 
         } catch (GenerateTrainingPlanException e) {
             log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: пользователь {} ошибка {}", userId, e.getMessage(), e);
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: пользователь {} ошибка {}",
+                    userId, e.getMessage(), e);
             throw new GenerateTrainingPlanException(MessageConstants.GENERATE_PLAN_FAILURE);
+        } finally {
+            cleanupResources(excelFile, image);
         }
     }
 
@@ -152,12 +151,17 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             throw new GenerateTrainingPlanException("Не удалось создать Excel файл для конвертации");
         }
 
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_СОЗДАН: размер {} байт путь {}",
+        if (excelFile.length() == 0) {
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_ПУСТОЙ: файл имеет размер 0 байт");
+            throw new GenerateTrainingPlanException("Excel файл пустой");
+        }
+
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_СОЗДАН: размер {} байт, путь {}",
                 excelFile.length(), excelFile.getAbsolutePath());
     }
 
     /**
-     * Проверяет сгенерированное изображение.
+     * Проверяет сгенерированное изображение в памяти.
      */
     private void validateGeneratedImage(BufferedImage image) {
         if (image == null) {
@@ -170,24 +174,39 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     }
 
     /**
-     * Создает путь для сохранения изображения.
+     * Создает уникальный выходной файл для изображения.
      */
-    private Path createOutputPath(UUID userId) throws Exception {
-        Path imageOutputDir = Paths.get(imageOutputDirPath);
-        if (!Files.exists(imageOutputDir)) {
-            Files.createDirectories(imageOutputDir);
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ДИРЕКТОРИЯ_СОЗДАНИЕ {}", imageOutputDir.toAbsolutePath());
+    private File createUniqueOutputFile(UUID userId) throws Exception {
+        Path outputDir = Paths.get(imageOutputDirPath);
+        if (!Files.exists(outputDir)) {
+            Files.createDirectories(outputDir);
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ДИРЕКТОРИЯ_СОЗДАНИЕ: {}", outputDir.toAbsolutePath());
         }
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String filename = String.format("training_plan_%s_%s.%s", userId, timestamp, defaultImageFormat);
-        return imageOutputDir.resolve(filename);
+        Path filePath = outputDir.resolve(filename);
+
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ФАЙЛ_СОЗДАНИЕ: {}", filePath.toAbsolutePath());
+
+        return filePath.toFile();
     }
 
     /**
-     * Сохраняет изображение в файл.
+     * Очищает ресурсы после завершения работы.
      */
-    private void saveImageToFile(BufferedImage image, Path outputPath) throws Exception {
-        ExcelUtils.saveImageWithCompression(image, defaultImageFormat, outputPath.toFile());
+    private void cleanupResources(File excelFile, BufferedImage image) {
+        if (excelFile != null && excelFile.exists()) {
+            try {
+                Files.deleteIfExists(excelFile.toPath());
+                log.debug("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ОЧИСТКА: Excel файл удален");
+            } catch (Exception e) {
+                log.warn("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ОЧИСТКА_EXCEL_ОШИБКА: {}", e.getMessage());
+            }
+        }
+
+        if (image != null) {
+            image.flush();
+        }
     }
 }

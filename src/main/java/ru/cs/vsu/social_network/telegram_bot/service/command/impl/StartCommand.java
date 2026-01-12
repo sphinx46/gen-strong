@@ -31,6 +31,8 @@ public class StartCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_START_COMMAND_BEGIN: обработка команды /start для Telegram ID: {}",
                 SERVICE_NAME, telegramId);
 

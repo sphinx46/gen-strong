@@ -30,6 +30,8 @@ public class DisplayNameInputCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_DISPLAY_NAME_INPUT_BEGIN: обработка имени '{}' для Telegram ID: {}",
                 SERVICE_NAME, input, telegramId);
 

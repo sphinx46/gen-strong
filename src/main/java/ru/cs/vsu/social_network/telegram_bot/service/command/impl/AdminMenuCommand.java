@@ -35,6 +35,8 @@ public class AdminMenuCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_ADMIN_MENU_COMMAND_BEGIN: администратор {}, команда меню: {}",
                 SERVICE_NAME, telegramId, input);
 

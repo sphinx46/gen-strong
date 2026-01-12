@@ -7,6 +7,7 @@ import ru.cs.vsu.social_network.telegram_bot.validation.UserValidator;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Базовый класс для всех команд Telegram бота.
@@ -20,9 +21,11 @@ public abstract class BaseTelegramCommand implements TelegramCommand {
     protected final UserService userService;
     protected final UserValidator userValidator;
 
-    protected Map<Long, String> userStates;
+    protected static Map<Long, String> userStates = new ConcurrentHashMap<>();
     protected Map<Long, String> adminStates;
     protected Map<Long, Double> pendingBenchPressValues;
+    protected Map<Long, String> pendingTrainingCycles;
+    protected Map<Long, String> pendingFormatSelections;
 
     /**
      * Конструктор базового класса команд.
@@ -30,7 +33,8 @@ public abstract class BaseTelegramCommand implements TelegramCommand {
      * @param userService сервис для работы с пользователями
      * @param userValidator валидатор пользователей
      */
-    protected BaseTelegramCommand(UserService userService, UserValidator userValidator) {
+    protected BaseTelegramCommand(UserService userService,
+                                  UserValidator userValidator) {
         this.userService = userService;
         this.userValidator = userValidator;
     }
@@ -60,6 +64,22 @@ public abstract class BaseTelegramCommand implements TelegramCommand {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setPendingTrainingCycles(Map<Long, String> pendingTrainingCycles) {
+        this.pendingTrainingCycles = pendingTrainingCycles;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setPendingFormatSelections(Map<Long, String> pendingFormatSelections) {
+        this.pendingFormatSelections = pendingFormatSelections;
+    }
+
+    /**
      * Получает информацию о пользователе.
      *
      * @param telegramId идентификатор пользователя в Telegram
@@ -84,5 +104,30 @@ public abstract class BaseTelegramCommand implements TelegramCommand {
                     SERVICE_NAME, userId, e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Проверяет и инициализирует состояния если они null
+     */
+    protected void checkAndInitStates() {
+        if (userStates == null) {
+            log.error("{}_STATES_NOT_INITIALIZED: состояния не инициализированы", SERVICE_NAME);
+            throw new IllegalStateException("Состояния команд не инициализированы");
+        }
+    }
+
+    /**
+     * Устанавливает состояние пользователя с проверкой
+     *
+     * @param telegramId идентификатор пользователя
+     * @param state состояние пользователя
+     */
+    protected void setUserState(Long telegramId, String state) {
+        checkAndInitStates();
+        userStates.put(telegramId, state);
+    }
+
+    public static String getUserState(Long telegramId) {
+        return userStates.get(telegramId);
     }
 }

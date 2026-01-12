@@ -163,21 +163,7 @@ public class ImageCacheServiceImpl implements ImageCacheService {
 
     /** {@inheritDoc} */
     @Override
-    public String generateCacheKey(File excelFile, Double maxBenchPress) {
-        String fileName = excelFile.getName();
-        long fileSize = excelFile.length();
-
-        if (maxBenchPress != null) {
-            double roundedBenchPress = Math.round(maxBenchPress * 10.0) / 10.0;
-            return String.format("training_plan_%d_%.1f", fileSize, roundedBenchPress);
-        } else {
-            return String.format("training_plan_%d", fileSize);
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String generateSimpleCacheKey(Double maxBenchPress, String templatePath) {
+    public String generateCycleCacheKey(Double maxBenchPress, String templatePath) {
         String templateName = new File(templatePath).getName();
 
         if (maxBenchPress != null) {
@@ -249,35 +235,5 @@ public class ImageCacheServiceImpl implements ImageCacheService {
     private String generateUniqueCacheFileName(String cacheKey) {
         String safeKey = cacheKey.replaceAll("[^a-zA-Z0-9._-]", "_");
         return String.format("cache_%s_%d.png", safeKey, System.currentTimeMillis());
-    }
-
-    /**
-     * Очищает весь кэш и удаляет все файлы (для тестирования).
-     */
-    public void clearAllCache() {
-        if (!cacheEnabled) {
-            return;
-        }
-
-        int size = imagePathCache.size();
-        imagePathCache.forEach((key, value) -> {
-            try {
-                Files.deleteIfExists(Paths.get(value.filePath));
-            } catch (Exception e) {
-                log.warn("КЕШ_СЕРВИС_ПОЛНАЯ_ОЧИСТКА_ФАЙЛ_ОШИБКА: не удалось удалить файл: {}, ошибка: {}",
-                        value.filePath, e.getMessage());
-            }
-        });
-        imagePathCache.clear();
-        log.info("КЕШ_СЕРВИС_ПОЛНАЯ_ОЧИСТКА: удалено {} записей и файлов", size);
-    }
-
-    /**
-     * Возвращает текущий размер кэша.
-     *
-     * @return количество записей в кэше
-     */
-    public int getCacheSize() {
-        return imagePathCache.size();
     }
 }

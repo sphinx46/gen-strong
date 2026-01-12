@@ -47,6 +47,8 @@ public class DailyReportCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_DAILY_REPORT_COMMAND_BEGIN: администратор {}, дата: {}",
                 SERVICE_NAME, telegramId, input);
 

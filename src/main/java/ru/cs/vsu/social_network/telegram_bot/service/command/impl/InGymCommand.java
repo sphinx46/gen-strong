@@ -36,6 +36,8 @@ public class InGymCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_IN_GYM_COMMAND_BEGIN: обработка команды 'Я в зале' для Telegram ID: {}",
                 SERVICE_NAME, telegramId);
 

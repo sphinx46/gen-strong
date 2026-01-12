@@ -3,6 +3,7 @@ package ru.cs.vsu.social_network.telegram_bot.service.serviceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.cs.vsu.social_network.telegram_bot.service.TelegramCommandService;
+import ru.cs.vsu.social_network.telegram_bot.service.command.BaseTelegramCommand;
 import ru.cs.vsu.social_network.telegram_bot.service.command.CommandFactory;
 import ru.cs.vsu.social_network.telegram_bot.service.command.TelegramCommand;
 
@@ -28,118 +29,109 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
         this.commandFactory = commandFactory;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleStartCommand(Long telegramId, String username, String firstName, String lastName) {
         String input = username + "|" + (firstName != null ? firstName : "") + "|" + (lastName != null ? lastName : "");
         return executeCommand("start", telegramId, input);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
+    /** {@inheritDoc} */
     @Override
     public String handleInGymCommand(Long telegramId) {
         return executeCommand("ingym", telegramId, null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleDisplayNameInput(Long telegramId, String displayName) {
         return executeCommand("displaynameinput", telegramId, displayName);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleDailyReportCommand(Long telegramId, String dateStr) {
         return executeCommand("dailyreport", telegramId, dateStr);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handlePeriodReportCommand(Long telegramId, String startDateStr, String endDateStr) {
         String input = startDateStr + " " + endDateStr;
         return executeCommand("periodreport", telegramId, input);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleTableCommand(Long telegramId, String input) {
         return executeCommand("table", telegramId, input);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleUnknownCommand(Long telegramId) {
         return executeCommand("help", telegramId, null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleAdminMenuCommand(Long telegramId, String menuCommand) {
         return executeCommand("adminmenu", telegramId, menuCommand);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleAdminDateInput(Long telegramId, String dateInput) {
         return executeCommand("admindateinput", telegramId, dateInput);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleHelpCommand(Long telegramId) {
         return executeCommand("help", telegramId, null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleChangeNameCommand(Long telegramId) {
         return executeCommand("changename", telegramId, null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleTrainingProgramCommand(Long telegramId) {
         return executeCommand("trainingprogram", telegramId, null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public String handleTrainingCycleSelection(Long telegramId, String cycleNumber) {
+        return executeCommand("trainingcycleselection", telegramId, cycleNumber);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public String handleBenchPressInput(Long telegramId, String benchPressInput) {
         return executeCommand("benchpressinput", telegramId, benchPressInput);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String handleFormatSelection(Long telegramId, String formatChoice) {
         return executeCommand("formatselection", telegramId, formatChoice);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getUserState(Long telegramId) {
+        try {
+            return BaseTelegramCommand.getUserState(telegramId);
+        } catch (Exception e) {
+            log.warn("{}_GET_USER_STATE_ERROR: не удалось получить состояние для {}: {}",
+                    SERVICE_NAME, telegramId, e.getMessage());
+            return null;
+        }
     }
 
     /**

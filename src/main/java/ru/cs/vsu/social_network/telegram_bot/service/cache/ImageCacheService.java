@@ -1,6 +1,5 @@
 package ru.cs.vsu.social_network.telegram_bot.service.cache;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 
 /**
@@ -28,13 +27,13 @@ public interface ImageCacheService {
     void cacheImagePath(String cacheKey, File imagePath, int width, int height);
 
     /**
-     * Генерирует ключ кэша для файла.
+     * Генерирует ключ кэша для тренировочного цикла.
      *
-     * @param excelFile Excel файл
      * @param maxBenchPress максимальный вес жима лежа
+     * @param templatePath путь к шаблону тренировочного цикла
      * @return ключ кэша
      */
-    String generateCacheKey(File excelFile, Double maxBenchPress);
+    String generateCycleCacheKey(Double maxBenchPress, String templatePath);
 
     /**
      * Очищает просроченные записи кэша.
@@ -47,14 +46,4 @@ public interface ImageCacheService {
      * @return true если кэширование включено
      */
     boolean isCacheEnabled();
-
-    /**
-     * Альтернативный метод генерации ключа кэша для случая,
-     * когда имя шаблона всегда одинаковое.
-     *
-     * @param maxBenchPress максимальный вес жима лежа
-     * @param templatePath путь к шаблону
-     * @return ключ кэша
-     */
-    String generateSimpleCacheKey(Double maxBenchPress, String templatePath);
 }

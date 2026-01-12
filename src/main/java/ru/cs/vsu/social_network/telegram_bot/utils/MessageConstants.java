@@ -23,4 +23,10 @@ public class MessageConstants {
     // TRAINING PLAN
     public final static String GENERATE_PLAN_FAILURE = "Ошибка! Не удалось сгенерировать тренировочный план";
     public static final String USER_TRAINING_NOT_FOUND_FAILURE = "Ошибка! Запись тренировок пользователя не найдена";
+
+    // TRAINING CYCLE
+    public static final String TRAINING_CYCLE_NOT_FOUND = "Ошибка! Тренировочный цикл не найден";
+    public static final String TRAINING_CYCLE_SELECTION_FAILURE = "Ошибка! Не удалось выбрать тренировочный цикл";
+    public static final String TRAINING_CYCLE_INVALID_INPUT = "Ошибка! Неверный выбор тренировочного цикла";
+    public static final String TRAINING_CYCLE_TEMPLATE_NOT_FOUND = "Ошибка! Шаблон тренировочного цикла не найден";
 }

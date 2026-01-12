@@ -1,4 +1,4 @@
-package ru.cs.vsu.social_network.telegram_bot.utils;
+package ru.cs.vsu.social_network.telegram_bot.utils.excel;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;

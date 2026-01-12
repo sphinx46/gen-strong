@@ -31,6 +31,8 @@ public class HelpCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_HELP_COMMAND_BEGIN: обработка команды /help для Telegram ID: {}",
                 SERVICE_NAME, telegramId);
 

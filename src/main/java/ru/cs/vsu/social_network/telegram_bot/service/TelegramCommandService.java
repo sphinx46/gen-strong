@@ -1,154 +1,148 @@
 package ru.cs.vsu.social_network.telegram_bot.service;
 
-import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException;
-
 /**
- * Сервис для обработки команд Telegram бота тренажерного зала.
- * Управляет входящими командами, состояниями пользователей и формированием ответов.
+ * Сервис обработки команд Telegram бота
  */
 public interface TelegramCommandService {
 
     /**
-     * Обрабатывает команду /start от пользователя.
-     * Регистрирует пользователя, запрашивает имя для обращения.
+     * Обрабатывает команду /start
      *
      * @param telegramId идентификатор пользователя в Telegram
-     * @param username никнейм пользователя
+     * @param username имя пользователя в Telegram
      * @param firstName имя пользователя
      * @param lastName фамилия пользователя
-     * @return ответное сообщение
+     * @return результат обработки команды
      */
-    String handleStartCommand(Long telegramId, String username,
-                              String firstName, String lastName);
+    String handleStartCommand(Long telegramId, String username, String firstName, String lastName);
 
     /**
-     * Обрабатывает команду "Я в зале" от пользователя.
-     * Создает запись о посещении и формирует журнал за текущий день.
+     * Обрабатывает команду /help
      *
      * @param telegramId идентификатор пользователя в Telegram
-     * @return ответное сообщение с подтверждением и журналом
-     */
-    String handleInGymCommand(Long telegramId);
-
-    /**
-     * Обрабатывает ввод отображаемого имени пользователя.
-     * Сохраняет имя, которое будет использоваться для обращения к пользователю.
-     *
-     * @param telegramId идентификатор пользователя в Telegram
-     * @param displayName отображаемое имя
-     * @return подтверждающее сообщение
-     */
-    String handleDisplayNameInput(Long telegramId, String displayName);
-
-    /**
-     * Обрабатывает команду администратора для получения отчета за день.
-     * Формирует журнал посещений за текущий день или указанную дату.
-     *
-     * @param telegramId идентификатор администратора в Telegram
-     * @param dateStr строка с датой (опционально)
-     * @return форматированный отчет за день
-     */
-    String handleDailyReportCommand(Long telegramId, String dateStr);
-
-    /**
-     * Обрабатывает команду администратора для получения отчета за период.
-     * Формирует статистику посещений за указанный период.
-     *
-     * @param telegramId идентификатор администратора в Telegram
-     * @param startDateStr строка с начальной датой
-     * @param endDateStr строка с конечной датой
-     * @return форматированный отчет за период
-     */
-    String handlePeriodReportCommand(Long telegramId, String startDateStr, String endDateStr);
-
-    /**
-     * Обрабатывает команду "Получить таблицу" (журнал посещений).
-     * Позволяет администратору получить таблицу за текущий день, определенную дату или период.
-     *
-     * @param telegramId идентификатор администратора в Telegram
-     * @param input параметры команды (может быть пустым, датой или двумя датами)
-     * @return форматированная таблица посещений
-     */
-    String handleTableCommand(Long telegramId, String input);
-
-    /**
-     * Обрабатывает неизвестную команду или сообщение.
-     * Предоставляет пользователю информацию о доступных командах.
-     *
-     * @param telegramId идентификатор пользователя в Telegram
-     * @return сообщение со списком доступных команд
-     */
-    String handleUnknownCommand(Long telegramId);
-
-    /**
-     * Обрабатывает команды из админ-меню при нажатии на кнопки.
-     * Управляет состояниями администратора для сбора данных для отчетов.
-     *
-     * @param telegramId идентификатор администратора в Telegram
-     * @param menuCommand текст команды из меню
-     * @return ответное сообщение или запрос дополнительных данных
-     */
-    String handleAdminMenuCommand(Long telegramId, String menuCommand);
-
-    /**
-     * Обрабатывает ввод даты администратором.
-     * Используется после выбора опций в меню для сбора дат для отчетов.
-     *
-     * @param telegramId идентификатор администратора в Telegram
-     * @param dateInput введенная дата или специальное значение
-     * @return сформированный отчет или следующий запрос данных
-     */
-    String handleAdminDateInput(Long telegramId, String dateInput);
-
-    /**
-     * Обрабатывает команду "Сменить имя" от пользователя.
-     * Запрашивает новое имя для обращения к пользователю.
-     *
-     * @param telegramId идентификатор пользователя в Telegram
-     * @return запрос на ввод нового имени
-     */
-    String handleChangeNameCommand(Long telegramId);
-
-    /**
-     * Обрабатывает команду /help.
-     * Возвращает справку по доступным командам в зависимости от роли пользователя.
-     *
-     * @param telegramId Telegram ID пользователя
-     * @return текст справки
+     * @return результат обработки команды
      */
     String handleHelpCommand(Long telegramId);
 
     /**
-     * Обрабатывает команду создания программы тренировок.
-     * Устанавливает состояние ожидания ввода максимального жима лежа.
+     * Обрабатывает неизвестную команду
      *
-     * @param telegramId Telegram ID пользователя
-     * @return запрос на ввод максимального жима лежа
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return результат обработки команды
+     */
+    String handleUnknownCommand(Long telegramId);
+
+    /**
+     * Обрабатывает команду "Я в зале"
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return результат обработки команды
+     */
+    String handleInGymCommand(Long telegramId);
+
+    /**
+     * Обрабатывает команду "Сменить имя"
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return результат обработки команды
+     */
+    String handleChangeNameCommand(Long telegramId);
+
+    /**
+     * Обрабатывает команду "Составить программу тренировок"
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return результат обработки команды
      */
     String handleTrainingProgramCommand(Long telegramId);
 
     /**
-     * Обрабатывает ввод максимального жима лежа и генерирует программу тренировок.
+     * Обрабатывает выбор тренировочного цикла
      *
-     * @param telegramId      Telegram ID пользователя
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param cycleNumber номер выбранного цикла
+     * @return результат обработки выбора
+     */
+    String handleTrainingCycleSelection(Long telegramId, String cycleNumber);
+
+    /**
+     * Обрабатывает ввод значения жима лежа
+     *
+     * @param telegramId идентификатор пользователя в Telegram
      * @param benchPressInput введенное значение жима лежа
-     * @return сообщение о результате генерации программы
+     * @return результат обработки ввода
      */
     String handleBenchPressInput(Long telegramId, String benchPressInput);
 
     /**
-     * Обрабатывает выбор формата программы тренировок пользователем.
-     * После получения максимального жима лежа пользователь выбирает,
-     * в каком формате ему предоставить программу тренировок:
-     * изображение или Excel таблица.
+     * Обрабатывает ввод отображаемого имени
      *
-     * @param telegramId уникальный идентификатор пользователя в Telegram
-     * @param formatChoice выбранный пользователем формат программы тренировок.
-     *                    Поддерживаются следующие варианты:
-     *                    - "Изображение", "Картинка", "1" - для генерации изображения
-     *                    - "Excel", "Таблица", "2" - для генерации Excel файла
-     * @return текстовый ответ пользователю о результате выбора формата
-     * @throws GenerateTrainingPlanException если не удалось сгенерировать программу
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param displayName введенное отображаемое имя
+     * @return результат обработки ввода
      */
-    String handleFormatSelection(final Long telegramId, final String formatChoice);
+    String handleDisplayNameInput(Long telegramId, String displayName);
+
+    /**
+     * Обрабатывает команду администраторского меню
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param commandText текст команды
+     * @return результат обработки команды
+     */
+    String handleAdminMenuCommand(Long telegramId, String commandText);
+
+    /**
+     * Обрабатывает ввод даты администратором
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param dateInput введенная дата
+     * @return результат обработки ввода
+     */
+    String handleAdminDateInput(Long telegramId, String dateInput);
+
+    /**
+     * Обрабатывает выбор формата программы тренировок
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param formatInput выбранный формат
+     * @return результат обработки выбора
+     */
+    String handleFormatSelection(Long telegramId, String formatInput);
+
+    /**
+     * Обрабатывает команду дневного отчета администратора
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param dateStr строка с датой
+     * @return результат обработки команды
+     */
+    String handleDailyReportCommand(Long telegramId, String dateStr);
+
+    /**
+     * Обрабатывает команду отчета за период администратора
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param startDateStr строка с начальной датой
+     * @param endDateStr строка с конечной датой
+     * @return результат обработки команды
+     */
+    String handlePeriodReportCommand(Long telegramId, String startDateStr, String endDateStr);
+
+    /**
+     * Обрабатывает команду вывода таблицы
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param input входные данные
+     * @return результат обработки команды
+     */
+    String handleTableCommand(Long telegramId, String input);
+
+    /**
+     * Получает текущее состояние пользователя
+     *
+     * @param telegramId идентификатор пользователя
+     * @return состояние пользователя или null если состояние не установлено
+     */
+    String getUserState(Long telegramId);
 }

@@ -4,12 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.cs.vsu.social_network.telegram_bot.dto.request.UserBenchPressRequest;
+import ru.cs.vsu.social_network.telegram_bot.dto.response.TrainingCycleInfo;
 import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException;
 import ru.cs.vsu.social_network.telegram_bot.service.ExcelTrainingService;
 import ru.cs.vsu.social_network.telegram_bot.service.ImageTrainingService;
 import ru.cs.vsu.social_network.telegram_bot.service.cache.ImageCacheService;
 import ru.cs.vsu.social_network.telegram_bot.service.image.ExcelToImageConverter;
-import ru.cs.vsu.social_network.telegram_bot.utils.ExcelUtils;
+import ru.cs.vsu.social_network.telegram_bot.utils.excel.ExcelUtils;
 import ru.cs.vsu.social_network.telegram_bot.utils.MessageConstants;
 
 import java.awt.image.BufferedImage;
@@ -36,9 +37,6 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     @Value("${training.image.format:png}")
     private String defaultImageFormat;
 
-    @Value("${training.template.path:training_cycles/gusenica_cycle.xlsx}")
-    private String templatePath;
-
     private final ExcelTrainingService excelTrainingService;
     private final ExcelToImageConverter excelToImageConverter;
     private final ImageCacheService imageCacheService;
@@ -56,17 +54,19 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
     /** {@inheritDoc} */
     @Override
-    public File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest) {
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {}, жим лежа {} кг",
-                userId, userBenchPressRequest.getMaxBenchPress());
+    public File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest, String cycleId) {
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {}, цикл {}, жим лежа {} кг",
+                userId, cycleId, userBenchPressRequest.getMaxBenchPress());
 
         File excelFile = null;
         BufferedImage image = null;
 
         try {
-            String cacheKey = imageCacheService.generateSimpleCacheKey(
+            TrainingCycleInfo cycleInfo = excelTrainingService.getTrainingCycleInfo(cycleId);
+
+            String cacheKey = imageCacheService.generateCycleCacheKey(
                     userBenchPressRequest.getMaxBenchPress(),
-                    templatePath
+                    cycleInfo.getTemplatePath()
             );
 
             if (imageCacheService.isCacheEnabled()) {
@@ -75,7 +75,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                     log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_ПОПАДАНИЕ: файл загружен из кеша, ключ: {}",
                             cacheKey);
 
-                    File resultFile = createUniqueOutputFile(userId);
+                    File resultFile = createUniqueOutputFile(userId, cycleInfo);
                     Files.copy(cachedFile.toPath(), resultFile.toPath());
 
                     log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ИЗ_КЕША_СОЗДАНО: файл {}",
@@ -88,12 +88,13 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 }
             }
 
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ГЕНЕРАЦИЯ: создание Excel файла для пользователя {}", userId);
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ГЕНЕРАЦИЯ: создание Excel файла для пользователя {}, цикл {}",
+                    userId, cycleId);
 
-            excelFile = excelTrainingService.generateTrainingPlan(userId, userBenchPressRequest);
+            excelFile = excelTrainingService.generateTrainingPlan(userId, userBenchPressRequest, cycleId);
             validateGeneratedExcelFile(excelFile);
 
-            File resultFile = createUniqueOutputFile(userId);
+            File resultFile = createUniqueOutputFile(userId, cycleInfo);
 
             log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КОНВЕРТАЦИЯ_В_ИЗОБРАЖЕНИЕ: формат {}", defaultImageFormat);
 
@@ -119,8 +120,8 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
                 log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_КЕШ_СОХРАНЕНО: ключ {}", cacheKey);
             }
 
-            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_УСПЕХ: пользователь {} файл {}",
-                    userId, resultFile.getAbsolutePath());
+            log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_УСПЕХ: пользователь {}, цикл {}, файл {}",
+                    userId, cycleId, resultFile.getAbsolutePath());
 
             return resultFile;
 
@@ -128,8 +129,8 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: пользователь {} ошибка {}",
-                    userId, e.getMessage(), e);
+            log.error("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_ОШИБКА: пользователь {}, цикл {}, ошибка {}",
+                    userId, cycleId, e.getMessage(), e);
             throw new GenerateTrainingPlanException(MessageConstants.GENERATE_PLAN_FAILURE);
         } finally {
             cleanupResources(excelFile, image);
@@ -138,8 +139,11 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
 
     /** {@inheritDoc} */
     @Override
-    public BufferedImage convertExcelToImage(File excelFile, String outputFormat) {
-        return excelToImageConverter.convertExcelToImage(excelFile, outputFormat);
+    public File generateTrainingPlanImage(UUID userId, UserBenchPressRequest userBenchPressRequest) {
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ГЕНЕРАЦИЯ_НАЧАЛО: пользователь {}, жим лежа {} кг",
+                userId, userBenchPressRequest.getMaxBenchPress());
+
+        return generateTrainingPlanImage(userId, userBenchPressRequest, "gusenica");
     }
 
     /**
@@ -156,7 +160,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
             throw new GenerateTrainingPlanException("Excel файл пустой");
         }
 
-        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_EXCEL_ФАЙЛ_СОЗДАН: размер {} байт, путь {}",
+        log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫй_ПЛАН_EXCEL_ФАЙЛ_СОЗДАН: размер {} байт, путь {}",
                 excelFile.length(), excelFile.getAbsolutePath());
     }
 
@@ -176,7 +180,7 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
     /**
      * Создает уникальный выходной файл для изображения.
      */
-    private File createUniqueOutputFile(UUID userId) throws Exception {
+    private File createUniqueOutputFile(UUID userId, TrainingCycleInfo cycleInfo) throws Exception {
         Path outputDir = Paths.get(imageOutputDirPath);
         if (!Files.exists(outputDir)) {
             Files.createDirectories(outputDir);
@@ -184,7 +188,8 @@ public class ImageTrainingServiceImpl implements ImageTrainingService {
         }
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String filename = String.format("training_plan_%s_%s.%s", userId, timestamp, defaultImageFormat);
+        String filename = String.format("training_plan_%s_%s_%s.%s",
+                cycleInfo.getId(), userId, timestamp, defaultImageFormat);
         Path filePath = outputDir.resolve(filename);
 
         log.info("ИЗОБРАЖЕНИЕ_ТРЕНИРОВОЧНЫЙ_ПЛАН_ФАЙЛ_СОЗДАНИЕ: {}", filePath.toAbsolutePath());

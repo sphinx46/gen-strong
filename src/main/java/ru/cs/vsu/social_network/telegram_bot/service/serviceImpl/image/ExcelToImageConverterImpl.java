@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.cs.vsu.social_network.telegram_bot.exception.GenerateTrainingPlanException;
 import ru.cs.vsu.social_network.telegram_bot.service.image.ExcelToImageConverter;
-import ru.cs.vsu.social_network.telegram_bot.utils.ExcelUtils;
+import ru.cs.vsu.social_network.telegram_bot.utils.excel.ExcelUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;

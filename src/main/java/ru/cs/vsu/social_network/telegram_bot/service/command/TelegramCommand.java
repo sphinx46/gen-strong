@@ -36,4 +36,18 @@ public interface TelegramCommand {
      * @param pendingBenchPressValues карта значений жима лежа
      */
     void setPendingBenchPressValues(Map<Long, Double> pendingBenchPressValues);
+
+    /**
+     * Устанавливает карту тренировочных циклов.
+     *
+     * @param pendingTrainingCycles карта тренировочных циклов
+     */
+    void setPendingTrainingCycles(Map<Long, String> pendingTrainingCycles);
+
+    /**
+     * Устанавливает карту выбранных форматов.
+     *
+     * @param pendingFormatSelections карта выбранных форматов
+     */
+    void setPendingFormatSelections(Map<Long, String> pendingFormatSelections);
 }

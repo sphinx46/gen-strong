@@ -6,7 +6,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.cs.vsu.social_network.telegram_bot.service.image.ImageRenderer;
-import ru.cs.vsu.social_network.telegram_bot.utils.ExcelUtils;
+import ru.cs.vsu.social_network.telegram_bot.utils.excel.ExcelUtils;
 
 import java.awt.*;
 import java.awt.Color;
@@ -86,7 +86,7 @@ public class ImageRendererImpl implements ImageRenderer {
     private static final int CELL_TEXT_OFFSET = 10;
     private static final int TEXT_MARGIN = 10;
     private static final int MIN_COLUMN_WIDTH = 80;
-    private static final int MAX_COLUMN_WIDTH = 300;
+    private static final int MAX_COLUMN_WIDTH = 450;
 
     /**
      * Конструктор инициализирует цветовую схему для рендеринга.

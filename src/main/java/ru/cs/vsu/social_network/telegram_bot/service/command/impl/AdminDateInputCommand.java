@@ -45,6 +45,8 @@ public class AdminDateInputCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_ADMIN_DATE_INPUT_BEGIN: администратор {}, ввод: {}",
                 SERVICE_NAME, telegramId, input);
 

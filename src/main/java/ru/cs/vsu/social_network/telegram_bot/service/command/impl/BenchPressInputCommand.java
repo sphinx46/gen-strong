@@ -33,6 +33,8 @@ public class BenchPressInputCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_BENCH_PRESS_INPUT_BEGIN: обработка ввода '{}' для Telegram ID: {}",
                 SERVICE_NAME, input, telegramId);
 

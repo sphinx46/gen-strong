@@ -30,6 +30,8 @@ public class ChangeNameCommand extends BaseTelegramCommand {
      */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_CHANGE_NAME_COMMAND_BEGIN: пользователь {} хочет сменить имя",
                 SERVICE_NAME, telegramId);
 

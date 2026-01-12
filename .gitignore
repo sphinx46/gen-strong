@@ -38,3 +38,4 @@ build/
 .env-prod
 
 /.mvn/wrapper/
+/logs/

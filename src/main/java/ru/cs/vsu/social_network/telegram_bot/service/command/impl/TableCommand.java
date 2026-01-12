@@ -57,6 +57,7 @@ public class TableCommand extends BaseTelegramCommand {
                 SERVICE_NAME, telegramId, input);
 
         try {
+            checkAndInitStates();
             UserInfoResponse user = getUserInfo(telegramId);
 
             if (!isAdmin(user.getId())) {

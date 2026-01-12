@@ -24,6 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * Основной класс Telegram бота для спортивного клуба
+ */
 @Slf4j
 @Component
 public class GymTelegramBot extends TelegramLongPollingBot {
@@ -31,18 +34,19 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     private static final String BOT_NAME = "GYM_TELEGRAM_BOT";
     private static final DateTimeFormatter INPUT_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final Pattern BENCH_PRESS_PATTERN = Pattern.compile("^\\d+(?:\\.\\d{1,2})?$");
+    private static final Pattern CYCLE_SELECTION_PATTERN = Pattern.compile("^[1-3]$");
 
     private final BotConfig botConfig;
     private final TelegramCommandService telegramCommandService;
     private final UserService userService;
 
     /**
-     * Конструктор бота.
+     * Конструктор бота
      *
-     * @param botOptions             опции бота
-     * @param botConfig              конфигурация бота
+     * @param botOptions опции бота
+     * @param botConfig конфигурация бота
      * @param telegramCommandService сервис обработки команд
-     * @param userService            сервис пользователей
+     * @param userService сервис пользователей
      */
     public GymTelegramBot(final DefaultBotOptions botOptions,
                           final BotConfig botConfig,
@@ -56,12 +60,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         log.info("{}_ИНИЦИАЛИЗАЦИЯ_НАЧАЛО: создание бота {}", BOT_NAME, botConfig.getBotUsername());
     }
 
-
+    /** {@inheritDoc} */
     @Override
     public String getBotUsername() {
         return botConfig.getBotUsername();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onUpdateReceived(final Update update) {
         log.debug("{}_ОБНОВЛЕНИЕ_ПОЛУЧЕНО: получено новое обновление", BOT_NAME);
@@ -91,13 +96,14 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обрабатывает входящее сообщение.
+     * Обрабатывает входящее сообщение
      *
      * @param telegramId идентификатор пользователя в Telegram
-     * @param text       текст сообщения
-     * @param message    объект сообщения
+     * @param text текст сообщения
+     * @param message объект сообщения
      * @return результат обработки сообщения
      */
+
     private String processMessage(final Long telegramId,
                                   final String text,
                                   final Message message) {
@@ -120,23 +126,38 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
         try {
             String processedText = text.trim();
+            String userState = telegramCommandService.getUserState(telegramId);
+
+            log.debug("{}_ТЕКУЩЕЕ_СОСТОЯНИЕ: пользователь {}, состояние: {}",
+                    BOT_NAME, telegramId, userState);
 
             if (isDateInput(processedText)) {
                 return telegramCommandService.handleAdminDateInput(telegramId, processedText);
             }
 
-            if (isFormatSelection(processedText)) {
-                log.debug("{}_ФОРМАТ_ВЫБОРА_ОБНАРУЖЕН: '{}'", BOT_NAME, processedText);
+            if ("awaiting_training_cycle".equals(userState) && isTrainingCycleSelection(processedText)) {
+                log.debug("{}_ВЫБОР_ЦИКЛА_ОБНАРУЖЕН: состояние корректно, обработка '{}'", BOT_NAME, processedText);
+                return telegramCommandService.handleTrainingCycleSelection(telegramId, processedText);
+            }
+
+            if ("awaiting_format_selection".equals(userState) && isFormatSelection(processedText)) {
+                log.debug("{}_ФОРМАТ_ВЫБОРА_ОБНАРУЖЕН: состояние корректно, обработка '{}'", BOT_NAME, processedText);
                 return telegramCommandService.handleFormatSelection(telegramId, processedText);
             }
 
-            if (isBenchPressInput(processedText)) {
-                log.debug("{}_ЖИМ_ЛЕЖА_ВВОД_ОБНАРУЖЕН: '{}'", BOT_NAME, processedText);
+            if ("awaiting_bench_press".equals(userState) && isBenchPressInput(processedText)) {
+                log.debug("{}_ЖИМ_ЛЕЖА_ВВОД_ОБНАРУЖЕН: состояние корректно, обработка '{}'", BOT_NAME, processedText);
                 return telegramCommandService.handleBenchPressInput(telegramId, processedText);
             }
 
-            log.debug("{}_ИМЯ_ВВОД_ОБНАРУЖЕН: '{}'", BOT_NAME, processedText);
-            return telegramCommandService.handleDisplayNameInput(telegramId, processedText);
+            if ("awaiting_display_name".equals(userState)) {
+                log.debug("{}_ИМЯ_ВВОД_ОБНАРУЖЕН: состояние корректно, обработка '{}'", BOT_NAME, processedText);
+                return telegramCommandService.handleDisplayNameInput(telegramId, processedText);
+            }
+
+            log.debug("{}_СООБЩЕНИЕ_НЕ_ОБРАБОТАНО: текст '{}' не соответствует текущему состоянию '{}'",
+                    BOT_NAME, processedText, userState);
+            return telegramCommandService.handleUnknownCommand((telegramId));
 
         } catch (Exception e) {
             log.error("{}_ОБРАБОТКА_ОШИБКА_ДЕТАЛЬ: ошибка при обработке сообщения '{}' от {}: {}",
@@ -145,18 +166,20 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Проверяет, является ли текст вводом даты.
-     *
-     * @param text текст для проверки
-     * @return true если текст является датой
-     */
+        /**
+         * Проверяет, является ли текст вводом даты
+         *
+         * @param text текст для проверки
+         * @return true если текст является датой
+         */
     private boolean isDateInput(String text) {
         try {
-            if ("сегодня".equalsIgnoreCase(text.trim()) ||
-                    "вчера".equalsIgnoreCase(text.trim())) {
+            String trimmed = text.trim().toLowerCase();
+
+            if ("сегодня".equals(trimmed) || "вчера".equals(trimmed)) {
                 return true;
             }
+
             LocalDate.parse(text.trim(), INPUT_DATE_FORMATTER);
             return true;
         } catch (DateTimeParseException e) {
@@ -165,7 +188,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Проверяет, является ли текст вводом жима лежа.
+     * Проверяет, является ли текст вводом жима лежа
+     *
+     * @param text текст для проверки
+     * @return true если текст является числом жима лежа
+     */
+    /**
+     * Проверяет, является ли текст вводом жима лежа
      *
      * @param text текст для проверки
      * @return true если текст является числом жима лежа
@@ -173,15 +202,40 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     private boolean isBenchPressInput(String text) {
         String trimmed = text.trim();
 
-        if ("1".equals(trimmed) || "2".equals(trimmed)) {
+        if (!BENCH_PRESS_PATTERN.matcher(trimmed).matches()) {
             return false;
         }
 
-        return BENCH_PRESS_PATTERN.matcher(trimmed).matches();
+        try {
+            double value = Double.parseDouble(trimmed);
+            if (value >= 1 && value <= 3 && Math.floor(value) == value) {
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
-     * Проверяет, является ли текст выбором формата программы тренировок.
+     * Проверяет, является ли текст выбором тренировочного цикла
+     *
+     * @param text текст для проверки
+     * @return true если текст является выбором цикла
+     */
+    private boolean isTrainingCycleSelection(String text) {
+        return CYCLE_SELECTION_PATTERN.matcher(text.trim()).matches();
+    }
+
+    /**
+     * Проверяет, является ли текст выбором формата программы тренировок
+     *
+     * @param text текст для проверки
+     * @return true если текст является выбором формата
+     */
+    /**
+     * Проверяет, является ли текст выбором формата программы тренировок
      *
      * @param text текст для проверки
      * @return true если текст является выбором формата
@@ -209,11 +263,11 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обрабатывает текстовую команду.
+     * Обрабатывает текстовую команду
      *
-     * @param telegramId  идентификатор пользователя в Telegram
+     * @param telegramId идентификатор пользователя в Telegram
      * @param commandText текст команды
-     * @param message     объект сообщения
+     * @param message объект сообщения
      * @return результат обработки команды
      */
     private String processCommand(final Long telegramId,
@@ -240,10 +294,10 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обрабатывает команду /start.
+     * Обрабатывает команду /start
      *
      * @param telegramId идентификатор пользователя в Telegram
-     * @param message    объект сообщения
+     * @param message объект сообщения
      * @return результат обработки команды
      */
     private String handleStartCommand(final Long telegramId, final Message message) {
@@ -257,11 +311,11 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Отправляет ответ пользователю.
+     * Отправляет ответ пользователю
      *
-     * @param chatId       идентификатор чата
+     * @param chatId идентификатор чата
      * @param responseText текст ответа
-     * @param telegramId   идентификатор пользователя в Telegram
+     * @param telegramId идентификатор пользователя в Telegram
      */
     private void sendResponse(final Long chatId, final String responseText, final Long telegramId) {
         try {
@@ -283,7 +337,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Создает основное меню клавиатуры.
+     * Создает основное меню клавиатуры
      *
      * @param telegramId идентификатор пользователя в Telegram
      * @return настроенная клавиатура
@@ -333,9 +387,9 @@ public class GymTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Отправляет сообщение об ошибке пользователю.
+     * Отправляет сообщение об ошибке пользователю
      *
-     * @param chatId     идентификатор чата
+     * @param chatId идентификатор чата
      * @param telegramId идентификатор пользователя в Telegram
      */
     private void sendErrorResponse(final Long chatId, final Long telegramId) {
@@ -356,6 +410,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onRegister() {
         super.onRegister();

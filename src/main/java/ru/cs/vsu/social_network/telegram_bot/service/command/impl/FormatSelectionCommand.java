@@ -46,11 +46,11 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
         this.documentSenderService = documentSenderService;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String execute(Long telegramId, String input) {
+        checkAndInitStates();
+
         log.info("{}_FORMAT_SELECTION_BEGIN: обработка выбора формата '{}' для Telegram ID: {}",
                 SERVICE_NAME, input, telegramId);
 
@@ -62,15 +62,18 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
             return "Неожиданный запрос. Пожалуйста, используйте команды из меню.";
         }
 
+
         try {
             UserInfoResponse user = getUserInfo(telegramId);
             Double benchPressValue = pendingBenchPressValues.get(telegramId);
+            String selectedCycleId = pendingTrainingCycles.get(telegramId);
 
-            if (benchPressValue == null) {
-                log.error("{}_FORMAT_SELECTION_DATA_ERROR: значение жима лежа не найдено для {}",
-                        SERVICE_NAME, telegramId);
+            if (benchPressValue == null || selectedCycleId == null) {
+                log.error("{}_FORMAT_SELECTION_DATA_ERROR: недостаточно данных для {} (benchPress: {}, cycleId: {})",
+                        SERVICE_NAME, telegramId, benchPressValue, selectedCycleId);
                 userStates.remove(telegramId);
                 pendingBenchPressValues.remove(telegramId);
+                pendingTrainingCycles.remove(telegramId);
                 return "Произошла ошибка при обработке данных.\n\n" +
                         "Пожалуйста, начните заново.";
             }
@@ -79,8 +82,8 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
                     .maxBenchPress(benchPressValue)
                     .build();
 
-            log.info("{}_BENCH_PRESS_SAVING: пользователь {}, жим лежа: {} кг",
-                    SERVICE_NAME, user.getId(), benchPressValue);
+            log.info("{}_BENCH_PRESS_SAVING: пользователь {}, жим лежа: {} кг, цикл: {}",
+                    SERVICE_NAME, user.getId(), benchPressValue, selectedCycleId);
 
             UserTrainingResponse trainingResponse =
                     userTrainingService.saveOrUpdateMaxBenchPressByTelegramId(telegramId, benchPressRequest);
@@ -97,20 +100,20 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
                     SERVICE_NAME, input, trimmedChoice);
 
             if ("1".equals(trimmedChoice) || "один".equalsIgnoreCase(trimmedChoice)) {
-                log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '1' - изображение",
-                        SERVICE_NAME, telegramId);
+                log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '1' - изображение, цикл: {}",
+                        SERVICE_NAME, telegramId, selectedCycleId);
 
-                trainingFile = imageTrainingService.generateTrainingPlanImage(user.getId(), benchPressRequest);
+                trainingFile = imageTrainingService.generateTrainingPlanImage(user.getId(), benchPressRequest, selectedCycleId);
                 formatType = "изображение";
 
                 log.info("{}_IMAGE_GENERATION_SUCCESS: файл создан: {}",
                         SERVICE_NAME, trainingFile.getAbsolutePath());
 
             } else if ("2".equals(trimmedChoice) || "два".equalsIgnoreCase(trimmedChoice)) {
-                log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '2' - Excel",
-                        SERVICE_NAME, telegramId);
+                log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '2' - Excel, цикл: {}",
+                        SERVICE_NAME, telegramId, selectedCycleId);
 
-                trainingFile = excelTrainingService.generateTrainingPlan(user.getId(), benchPressRequest);
+                trainingFile = excelTrainingService.generateTrainingPlan(user.getId(), benchPressRequest, selectedCycleId);
                 formatType = "Excel таблица";
 
                 log.info("{}_EXCEL_GENERATION_SUCCESS: файл создан: {}",
@@ -125,10 +128,10 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
                         "img".equals(normalizedChoice) ||
                         "фото".equals(normalizedChoice)) {
 
-                    log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '{}' - изображение",
-                            SERVICE_NAME, telegramId, input);
+                    log.info("{}_IMAGE_GENERATION_BEGIN: пользователь {} выбрал '{}' - изображение, цикл: {}",
+                            SERVICE_NAME, telegramId, input, selectedCycleId);
 
-                    trainingFile = imageTrainingService.generateTrainingPlanImage(user.getId(), benchPressRequest);
+                    trainingFile = imageTrainingService.generateTrainingPlanImage(user.getId(), benchPressRequest, selectedCycleId);
                     formatType = "изображение";
 
                     log.info("{}_IMAGE_GENERATION_SUCCESS: файл создан: {}",
@@ -140,10 +143,10 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
                         "эксэль".equals(normalizedChoice) ||
                         "эксель".equals(normalizedChoice)) {
 
-                    log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '{}' - Excel",
-                            SERVICE_NAME, telegramId, input);
+                    log.info("{}_EXCEL_GENERATION_BEGIN: пользователь {} выбрал '{}' - Excel, цикл: {}",
+                            SERVICE_NAME, telegramId, input, selectedCycleId);
 
-                    trainingFile = excelTrainingService.generateTrainingPlan(user.getId(), benchPressRequest);
+                    trainingFile = excelTrainingService.generateTrainingPlan(user.getId(), benchPressRequest, selectedCycleId);
                     formatType = "Excel таблица";
 
                     log.info("{}_EXCEL_GENERATION_SUCCESS: файл создан: {}",
@@ -159,14 +162,15 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
                 }
             }
 
-            String caption = buildTrainingProgramCaption(user, benchPressValue, formatType);
+            String caption = buildTrainingProgramCaption(user, benchPressValue, selectedCycleId, formatType);
             documentSenderService.sendDocument(telegramId, trainingFile, caption);
 
             userStates.remove(telegramId);
             pendingBenchPressValues.remove(telegramId);
+            pendingTrainingCycles.remove(telegramId);
 
-            log.info("{}_TRAINING_PROGRAM_SEND_SUCCESS: программа в формате {} отправлена пользователю {}",
-                    SERVICE_NAME, formatType, telegramId);
+            log.info("{}_TRAINING_PROGRAM_SEND_SUCCESS: программа в формате {} отправлена пользователю {}, цикл: {}",
+                    SERVICE_NAME, formatType, telegramId, selectedCycleId);
 
             return "Программа отправлена!\n\n" +
                     "Файл с индивидуальной программой тренировок загружается...";
@@ -177,6 +181,7 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
 
             userStates.remove(telegramId);
             pendingBenchPressValues.remove(telegramId);
+            pendingTrainingCycles.remove(telegramId);
 
             return "Не удалось сгенерировать программу тренировок.\n\n" +
                     "Пожалуйста, попробуйте позже или обратитесь к администратору.";
@@ -188,20 +193,31 @@ public class FormatSelectionCommand extends BaseTelegramCommand {
      *
      * @param user информация о пользователе
      * @param currentBenchPress текущий жим лежа
+     * @param cycleId идентификатор тренировочного цикла
      * @param formatType тип формата
      * @return текст подписи
      */
     private String buildTrainingProgramCaption(UserInfoResponse user,
                                                double currentBenchPress,
+                                               String cycleId,
                                                String formatType) {
         StringBuilder caption = new StringBuilder();
 
         caption.append(String.format("%s, ваша индивидуальная программа тренировок готова!\n\n",
                 user.getDisplayName() != null ? user.getDisplayName() : user.getFirstName()));
 
-        caption.append(String.format("Максимальный жим лежа: %.1f кг\n\n", currentBenchPress));
+        caption.append(String.format("Максимальный жим лежа: %.1f кг\n", currentBenchPress));
 
-        caption.append("Тренировочная система «Гусеница новая»\n");
+        try {
+            ru.cs.vsu.social_network.telegram_bot.dto.response.TrainingCycleInfo cycleInfo =
+                    excelTrainingService.getTrainingCycleInfo(cycleId);
+            caption.append(String.format("Тренировочный цикл: %s\n", cycleInfo.getDisplayName()));
+        } catch (Exception e) {
+            log.warn("{}_CAPTION_CYCLE_INFO_ERROR: не удалось получить информацию о цикле {}: {}",
+                    SERVICE_NAME, cycleId, e.getMessage());
+            caption.append("Тренировочный цикл: Гусеница\n");
+        }
+
         caption.append("Автор: заслуженный тренер России Суровецкий А.Е.\n\n");
 
         caption.append("Файл содержит:\n");

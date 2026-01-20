@@ -24,7 +24,6 @@ public class GusenicaTrainingPlanGenerationStrategy extends AbstractTrainingPlan
                 .id("gusenica")
                 .name("Гусеница")
                 .displayName("Гусеница")
-                .description("Тренировочный цикл 'Гусеница'")
                 .templatePath(templatePath)
                 .author("А.E. Суровецкий")
                 .build();

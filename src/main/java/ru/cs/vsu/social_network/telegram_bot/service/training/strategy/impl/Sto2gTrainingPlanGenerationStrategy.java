@@ -24,7 +24,6 @@ public class Sto2gTrainingPlanGenerationStrategy extends AbstractTrainingPlanGen
                 .id("sto-2g")
                 .name("STO-2G")
                 .displayName("СТО-2ж")
-                .description("Тренировочный цикл 'СТО-2ж' - цикл для подготовки к силовым нормативам")
                 .templatePath(templatePath)
                 .author("А.E. Суровецкий")
                 .build();

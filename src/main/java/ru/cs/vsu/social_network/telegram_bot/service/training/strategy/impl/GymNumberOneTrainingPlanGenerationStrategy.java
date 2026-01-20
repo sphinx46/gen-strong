@@ -24,7 +24,6 @@ public class GymNumberOneTrainingPlanGenerationStrategy extends AbstractTraining
                 .id("gym-number-one")
                 .name("Gym-number-one")
                 .displayName("Жим номер один")
-                .description("Тренировочный цикл 'Жим номер один'")
                 .templatePath(templatePath)
                 .author("А.E. Суровецкий")
                 .build();

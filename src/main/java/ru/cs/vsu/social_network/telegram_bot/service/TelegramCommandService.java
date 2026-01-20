@@ -52,27 +52,10 @@ public interface TelegramCommandService {
      * Обрабатывает команду "Составить программу тренировок"
      *
      * @param telegramId идентификатор пользователя в Telegram
+     * @param input входные данные (номер цикла или значение жима лежа)
      * @return результат обработки команды
      */
-    String handleTrainingProgramCommand(Long telegramId);
-
-    /**
-     * Обрабатывает выбор тренировочного цикла
-     *
-     * @param telegramId идентификатор пользователя в Telegram
-     * @param cycleNumber номер выбранного цикла
-     * @return результат обработки выбора
-     */
-    String handleTrainingCycleSelection(Long telegramId, String cycleNumber);
-
-    /**
-     * Обрабатывает ввод значения жима лежа
-     *
-     * @param telegramId идентификатор пользователя в Telegram
-     * @param benchPressInput введенное значение жима лежа
-     * @return результат обработки ввода
-     */
-    String handleBenchPressInput(Long telegramId, String benchPressInput);
+    String handleTrainingProgramCommand(Long telegramId, String input);
 
     /**
      * Обрабатывает ввод отображаемого имени
@@ -102,15 +85,6 @@ public interface TelegramCommandService {
     String handleAdminDateInput(Long telegramId, String dateInput);
 
     /**
-     * Обрабатывает выбор формата программы тренировок
-     *
-     * @param telegramId идентификатор пользователя в Telegram
-     * @param formatInput выбранный формат
-     * @return результат обработки выбора
-     */
-    String handleFormatSelection(Long telegramId, String formatInput);
-
-    /**
      * Обрабатывает команду дневного отчета администратора
      *
      * @param telegramId идентификатор пользователя в Telegram
@@ -137,6 +111,14 @@ public interface TelegramCommandService {
      * @return результат обработки команды
      */
     String handleTableCommand(Long telegramId, String input);
+
+    /**
+     * Обрабатывает команду "Внести вклад в развитие"
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @return результат обработки команды
+     */
+    String handleContributionCommand(Long telegramId);
 
     /**
      * Получает текущее состояние пользователя

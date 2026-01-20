@@ -153,7 +153,7 @@ public class TrainingProgramCommand extends BaseTelegramCommand {
 
         for (int i = 0; i < availableCycles.size(); i++) {
             TrainingCycleInfo cycle = availableCycles.get(i);
-            response.append(String.format("%d. %s - %s\n", i + 1, cycle.getDisplayName(), cycle.getDescription()));
+            response.append(String.format("%d. %s -\n", i + 1, cycle.getDisplayName()));
         }
 
         response.append("\nВсе циклы разработаны заслуженным тренером России А.Е. Суровецким\n\n");

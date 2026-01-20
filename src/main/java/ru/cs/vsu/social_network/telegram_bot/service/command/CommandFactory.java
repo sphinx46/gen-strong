@@ -62,6 +62,10 @@ public class CommandFactory {
             } else if (command instanceof ru.cs.vsu.social_network.telegram_bot.service.command.impl.PeriodReportCommand) {
                 commands.put("periodreport", command);
                 commands.put("периодотчет", command);
+            } else if (command instanceof ru.cs.vsu.social_network.telegram_bot.service.command.impl.MetricsCommand) {
+                commands.put("metrics", command);
+                commands.put("метрики", command);
+                commands.put("сборметрик", command);
             }
         });
 

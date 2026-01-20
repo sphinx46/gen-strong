@@ -86,6 +86,11 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
     }
 
     @Override
+    public String handleMetricsCommand(Long telegramId, String input) {
+        return executeCommand("metrics", telegramId, input);
+    }
+
+    @Override
     public String getUserState(Long telegramId) {
         try {
             return BaseTelegramCommand.getUserState(telegramId);

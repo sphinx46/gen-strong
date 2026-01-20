@@ -121,6 +121,15 @@ public interface TelegramCommandService {
     String handleContributionCommand(Long telegramId);
 
     /**
+     * Обрабатывает команду сбора метрик
+     *
+     * @param telegramId идентификатор пользователя в Telegram
+     * @param input введенные данные (вес, цель и т.д.) или null для начала сбора
+     * @return результат обработки команды
+     */
+    String handleMetricsCommand(Long telegramId, String input);
+
+    /**
      * Получает текущее состояние пользователя
      *
      * @param telegramId идентификатор пользователя

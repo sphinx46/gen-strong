@@ -93,6 +93,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return telegramCommandService.handleInGymCommand(telegramId);
         } else if ("Сменить имя".equalsIgnoreCase(text)) {
             return telegramCommandService.handleChangeNameCommand(telegramId);
+        } else if ("Сбор метрик".equalsIgnoreCase(text)) {
+            return telegramCommandService.handleMetricsCommand(telegramId, null);
         } else if (text.toLowerCase().contains("составить программу")) {
             return telegramCommandService.handleTrainingProgramCommand(telegramId, text);
         } else if ("Внести вклад в развитие".equalsIgnoreCase(text)) {
@@ -110,6 +112,10 @@ public class GymTelegramBot extends TelegramLongPollingBot {
 
             if (isDateInput(processedText)) {
                 return telegramCommandService.handleAdminDateInput(telegramId, processedText);
+            }
+
+            if (userState != null && userState.startsWith("awaiting_metrics")) {
+                return telegramCommandService.handleMetricsCommand(telegramId, processedText);
             }
 
             if (userState != null && userState.startsWith("awaiting")) {
@@ -154,14 +160,17 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         log.debug("{}_КОМАНДА_ОБРАБОТКА_НАЧАЛО: текст команды '{}' от пользователя {}",
                 BOT_NAME, commandText, telegramId);
 
-        final String command = commandText.split("\\s+", 2)[0].toLowerCase();
+        final String[] parts = commandText.split("\\s+", 2);
+        final String command = parts[0].toLowerCase();
+        final String input = parts.length > 1 ? parts[1].trim() : null;
 
-        log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}' от пользователя {}",
-                BOT_NAME, command, telegramId);
+        log.debug("{}_КОМАНДА_ОБРАБОТКА: команда '{}', input '{}' от пользователя {}",
+                BOT_NAME, command, input, telegramId);
 
         return switch (command) {
             case "/start" -> handleStartCommand(telegramId, message);
             case "/help" -> telegramCommandService.handleHelpCommand(telegramId);
+            case "/metrics", "/метрики" -> telegramCommandService.handleMetricsCommand(telegramId, input);
             default -> {
                 log.warn("{}_КОМАНДА_НЕИЗВЕСТНАЯ: неизвестная команда '{}' от {}",
                         BOT_NAME, command, telegramId);
@@ -210,12 +219,16 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         final KeyboardRow row1 = new KeyboardRow();
         row1.add(new KeyboardButton("Я в зале"));
         row1.add(new KeyboardButton("Сменить имя"));
-        row1.add(new KeyboardButton("Составить программу тренировок"));
+        row1.add(new KeyboardButton("Сбор метрик"));
         keyboard.add(row1);
 
         final KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton("Внести вклад в развитие"));
+        row2.add(new KeyboardButton("Составить программу тренировок"));
         keyboard.add(row2);
+
+        final KeyboardRow row3 = new KeyboardRow();
+        row3.add(new KeyboardButton("Внести вклад в развитие"));
+        keyboard.add(row3);
 
         try {
             UserInfoResponse user = userService.getUserByTelegramId(telegramId);

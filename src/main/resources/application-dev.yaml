@@ -4,7 +4,7 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:postgresql://postgres:5433/gymbot_dev
+    url: jdbc:postgresql://postgres:5432/gymbot_dev
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -103,5 +103,3 @@ logging:
     org.springframework.ai: INFO
   file:
     name: logs/gym-bot-dev.log
-    max-size: 5MB
-    max-history: 7

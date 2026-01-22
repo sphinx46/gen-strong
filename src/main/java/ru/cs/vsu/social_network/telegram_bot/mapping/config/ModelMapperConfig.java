@@ -6,15 +6,10 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import ru.cs.vsu.social_network.telegram_bot.dto.request.AddVisitorRequest;
-import ru.cs.vsu.social_network.telegram_bot.dto.request.UserBenchPressRequest;
-import ru.cs.vsu.social_network.telegram_bot.dto.request.UserCreateRequest;
-import ru.cs.vsu.social_network.telegram_bot.dto.request.UserUpdateRequest;
+import ru.cs.vsu.social_network.telegram_bot.dto.request.*;
 import ru.cs.vsu.social_network.telegram_bot.dto.response.*;
-import ru.cs.vsu.social_network.telegram_bot.entity.User;
-import ru.cs.vsu.social_network.telegram_bot.entity.UserTraining;
-import ru.cs.vsu.social_network.telegram_bot.entity.Visit;
-import ru.cs.vsu.social_network.telegram_bot.entity.VisitorLog;
+import ru.cs.vsu.social_network.telegram_bot.entity.*;
+import ru.cs.vsu.social_network.telegram_bot.entity.enums.FITNESS_GOAL;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -45,6 +40,7 @@ public class ModelMapperConfig {
         configureVisitMappings(modelMapper);
         configureVisitorLogMappings(modelMapper);
         configureUserTrainingMappings(modelMapper);
+        configureUserMetricsMappings(modelMapper);
 
         modelMapper.getConfiguration()
                 .setFieldMatchingEnabled(true)
@@ -59,7 +55,7 @@ public class ModelMapperConfig {
 
     /**
      * Настраивает конвертеры для преобразования типов.
-     * Решает проблему маппинга final классов, таких как LocalDateTime.
+     * Решает проблему маппинга final классов, таких как LocalDateTime и enum.
      *
      * @param modelMapper экземпляр ModelMapper для настройки
      */
@@ -81,6 +77,13 @@ public class ModelMapperConfig {
         modelMapper.addConverter(new AbstractConverter<LocalDate, LocalDate>() {
             @Override
             protected LocalDate convert(LocalDate source) {
+                return source;
+            }
+        });
+
+        modelMapper.addConverter(new AbstractConverter<FITNESS_GOAL, FITNESS_GOAL>() {
+            @Override
+            protected FITNESS_GOAL convert(FITNESS_GOAL source) {
                 return source;
             }
         });
@@ -204,8 +207,7 @@ public class ModelMapperConfig {
         modelMapper.addMappings(new PropertyMap<UserTraining, UserTrainingResponse>() {
             @Override
             protected void configure() {
-                log.debug("MODEL_MAPPER_USER_TRAINING_TO_RESPONSE: н" +
-                        "астройка маппинга UserTraining -> UserTrainingResponse");
+                log.debug("MODEL_MAPPER_USER_TRAINING_TO_RESPONSE: настройка маппинга UserTraining -> UserTrainingResponse");
 
                 map().setId(source.getId());
                 map().setUserId(source.getUser().getId());
@@ -221,8 +223,7 @@ public class ModelMapperConfig {
         modelMapper.addMappings(new PropertyMap<UserBenchPressRequest, UserTraining>() {
             @Override
             protected void configure() {
-                log.debug("MODEL_MAPPER_BENCH_PRESS_TO_USER_TRAINING: " +
-                        "настройка маппинга UserBenchPressRequest -> UserTraining");
+                log.debug("MODEL_MAPPER_BENCH_PRESS_TO_USER_TRAINING: настройка маппинга UserBenchPressRequest -> UserTraining");
 
                 map().setMaxBenchPress(source.getMaxBenchPress());
                 skip(destination.getUser());
@@ -239,8 +240,7 @@ public class ModelMapperConfig {
         modelMapper.addMappings(new PropertyMap<UserTrainingResponse, UserTraining>() {
             @Override
             protected void configure() {
-                log.debug("MODEL_MAPPER_RESPONSE_TO_USER_TRAINING: " +
-                        "настройка маппинга UserTrainingResponse -> UserTraining");
+                log.debug("MODEL_MAPPER_RESPONSE_TO_USER_TRAINING: настройка маппинга UserTrainingResponse -> UserTraining");
 
                 map().setId(source.getId());
                 map().setMaxBenchPress(source.getMaxBenchPress());
@@ -254,5 +254,77 @@ public class ModelMapperConfig {
         });
 
         log.info("MODEL_MAPPER_КОНФИГУРАЦИЯ_USER_TRAINING_УСПЕХ: все маппинги настроены");
+    }
+
+    /**
+     * Настраивает маппинг для сущности UserMetrics и связанных DTO.
+     * Определяет правила преобразования между UserMetrics, UserMetricsRequest и UserMetricsResponse.
+     * Добавлено для поддержки функционала сбора метрик пользователя.
+     *
+     * @param modelMapper экземпляр ModelMapper для настройки
+     */
+    private void configureUserMetricsMappings(ModelMapper modelMapper) {
+        log.info("MODEL_MAPPER_КОНФИГУРАЦИЯ_USER_METRICS: настройка маппинга UserMetrics");
+
+        modelMapper.addMappings(new PropertyMap<UserMetrics, UserMetricsResponse>() {
+            @Override
+            protected void configure() {
+                log.debug("MODEL_MAPPER_USER_METRICS_TO_RESPONSE: настройка маппинга UserMetrics -> UserMetricsResponse");
+
+                map().setTelegramId(source.getTelegramId());
+                map().setWeight(source.getWeight());
+                map().setGoal(source.getGoal());
+                map().setGoalRussianName(source.getGoalRussianName());
+                map().setWorkoutsPerWeek(source.getWorkoutsPerWeek());
+                map().setTrainingExperience(source.getTrainingExperience());
+                map().setAge(source.getAge());
+                map().setComment(source.getComment());
+                map().setCreatedAt(source.getCreatedAt());
+                map().setUpdatedAt(source.getUpdatedAt());
+
+                log.debug("MODEL_MAPPER_USER_METRICS_TO_RESPONSE_УСПЕХ: маппинг настроен");
+            }
+        });
+
+        modelMapper.addMappings(new PropertyMap<UserMetricsRequest, UserMetrics>() {
+            @Override
+            protected void configure() {
+                log.debug("MODEL_MAPPER_METRICS_REQUEST_TO_ENTITY: настройка маппинга UserMetricsRequest -> UserMetrics");
+
+                map().setTelegramId(source.getTelegramId());
+                map().setWeight(source.getWeight());
+                map().setGoal(source.getGoal());
+                using(ctx -> {
+                    FITNESS_GOAL goal = (FITNESS_GOAL) ctx.getSource();
+                    return goal != null ? goal.getRussianName() : null;
+                }).map(source.getGoal(), destination.getGoalRussianName());
+                map().setWorkoutsPerWeek(source.getWorkoutsPerWeek());
+                map().setTrainingExperience(source.getTrainingExperience());
+                map().setAge(source.getAge());
+                map().setComment(source.getComment());
+
+                log.debug("MODEL_MAPPER_METRICS_REQUEST_TO_ENTITY_УСПЕХ: маппинг настроен");
+            }
+        });
+
+        modelMapper.addMappings(new PropertyMap<UserMetricsResponse, UserMetrics>() {
+            @Override
+            protected void configure() {
+                log.debug("MODEL_MAPPER_RESPONSE_TO_USER_METRICS: настройка маппинга UserMetricsResponse -> UserMetrics");
+
+                map().setTelegramId(source.getTelegramId());
+                map().setWeight(source.getWeight());
+                map().setGoal(source.getGoal());
+                map().setGoalRussianName(source.getGoalRussianName());
+                map().setWorkoutsPerWeek(source.getWorkoutsPerWeek());
+                map().setTrainingExperience(source.getTrainingExperience());
+                map().setAge(source.getAge());
+                map().setComment(source.getComment());
+
+                log.debug("MODEL_MAPPER_RESPONSE_TO_USER_METRICS_УСПЕХ: маппинг настроен");
+            }
+        });
+
+        log.info("MODEL_MAPPER_КОНФИГУРАЦИЯ_USER_METRICS_УСПЕХ: все маппинги настроены");
     }
 }

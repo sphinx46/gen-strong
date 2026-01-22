@@ -29,11 +29,35 @@ spring:
         connection:
           provider_disables_autocommit: true
 
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      chat:
+        options:
+          model: gemini-1.5-flash-latest
+          temperature: 0.3
+          top-p: 0.9
+          top-k: 40
+      embedding:
+        enabled: true
+        options:
+          model: embedding-001
+          dimensions: 768
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: COSINE_HNSW
+        dimensions: 768
+        distance-type: cosine_distance
+        similarity-search-top-k: 5
+
   flyway:
     enabled: false
 
   cache:
-    type: none
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=1h
 
 telegram:
   bot:
@@ -50,6 +74,11 @@ app:
     admin-telegram-ids: ${ADMIN_TELEGRAM_IDS:2056410944}
   scheduler:
     enabled: false
+  rag:
+    chunk-size: 1000
+    chunk-overlap: 200
+    max-chunks-per-request: 5
+    temperature: 0.3
 
 server:
   port: 8081
@@ -71,6 +100,7 @@ logging:
     ru.cs.vsu.social_network.telegram_bot: INFO
     org.springframework: WARN
     org.hibernate: WARN
+    org.springframework.ai: INFO
   file:
     name: logs/gym-bot-dev.log
     max-size: 5MB

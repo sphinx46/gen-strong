@@ -40,4 +40,18 @@ public class UserMetrics extends BaseEntity {
 
     @Column(name = "comment", length = 1000)
     private String comment;
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(" Вес: ").append(weight != null ? weight + " кг" : "не указан").append("\n");
+        sb.append(" Цель: ").append(goalRussianName != null ? goalRussianName : "не указана").append("\n");
+        sb.append(" Тренировок в неделю: ").append(workoutsPerWeek != null ? workoutsPerWeek : "не указано").append("\n");
+        sb.append(" Тренировочный стаж: ").append(trainingExperience != null ? trainingExperience + " лет" : "не указан").append("\n");
+        sb.append(" Возраст: ").append(age != null ? age + " лет" : "не указан").append("\n");
+        if (comment != null && comment.length() > 1 && !comment.matches("^[\\s\\S]{1,2}$")) {
+            sb.append("• Комментарий: ").append(comment);
+        }
+        return sb.toString();
+    }
 }

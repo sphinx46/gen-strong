@@ -15,6 +15,14 @@ import ru.cs.vsu.social_network.telegram_bot.validation.UserValidator;
 public class MetricsCommand extends BaseTelegramCommand {
 
     private static final String COMMAND_NAME = "METRICS_COMMAND";
+    private static final String STATE_AWAITING_METRICS_WEIGHT = "awaiting_metrics_weight";
+    private static final String STATE_AWAITING_METRICS_GOAL = "awaiting_metrics_goal";
+    private static final String STATE_AWAITING_METRICS_WORKOUTS = "awaiting_metrics_workouts";
+    private static final String STATE_AWAITING_METRICS_EXPERIENCE = "awaiting_metrics_experience";
+    private static final String STATE_AWAITING_METRICS_AGE = "awaiting_metrics_age";
+    private static final String STATE_AWAITING_METRICS_COMMENT = "awaiting_metrics_comment";
+    private static final String STATE_AWAITING_METRICS_CHOICE = "awaiting_metrics_choice";
+
     private final UserMetricsService userMetricsService;
 
     public MetricsCommand(UserService userService, UserValidator userValidator,
@@ -45,28 +53,36 @@ public class MetricsCommand extends BaseTelegramCommand {
         }
     }
 
-    /**
-     * Инициализация сбора метрик пользователя
-     * @param telegramId идентификатор пользователя в Telegram
-     * @return приветственное сообщение
-     */
     private String initializeMetricsCollection(Long telegramId) {
-        setUserState(telegramId, "awaiting_metrics_weight");
+        boolean metricsExist = userMetricsService.existsByTelegramId(telegramId);
 
+        if (metricsExist) {
+            UserMetricsResponse existingMetrics = userMetricsService.getMetricsByTelegramId(telegramId);
+            if (existingMetrics != null) {
+                setUserState(telegramId, STATE_AWAITING_METRICS_CHOICE);
+                return buildExistingMetricsMessage(existingMetrics);
+            }
+        }
+
+        setUserState(telegramId, STATE_AWAITING_METRICS_WEIGHT);
         log.info("{}_ИНИЦИАЛИЗАЦИЯ: начало сбора метрик для {}", COMMAND_NAME, telegramId);
-
         return """
                  Сбор индивидуальных метрик
                 
                 1. Введите ваш текущий вес (в кг, например: 75.5):""";
     }
 
-    /**
-     * Обработка ввода пользователя на основе текущего состояния
-     * @param telegramId идентификатор пользователя в Telegram
-     * @param input введенные пользователем данные
-     * @return ответное сообщение
-     */
+    private String buildExistingMetricsMessage(UserMetricsResponse metrics) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("📋 У вас уже есть сохраненные метрики:\n");
+        sb.append(metrics.toString()).append("\n\n");
+        sb.append("Вы хотите:\n");
+        sb.append("1 - Оставить текущие метрики\n");
+        sb.append("2 - Изменить метрики\n\n");
+        sb.append("Введите номер выбора (1 или 2):");
+        return sb.toString();
+    }
+
     private String processMetricsInput(Long telegramId, String input) {
         String state = getUserState(telegramId);
 
@@ -80,7 +96,10 @@ public class MetricsCommand extends BaseTelegramCommand {
         String trimmedInput = input.trim();
 
         switch (state) {
-            case "awaiting_metrics_weight":
+            case STATE_AWAITING_METRICS_CHOICE:
+                return handleMetricsChoice(telegramId, trimmedInput);
+
+            case STATE_AWAITING_METRICS_WEIGHT:
                 Double weight = parseWeight(trimmedInput);
                 if (weight == null) {
                     return "❌ Пожалуйста, введите корректный вес (например: 75.5 или 80):\n" +
@@ -91,10 +110,10 @@ public class MetricsCommand extends BaseTelegramCommand {
                         .weight(weight)
                         .build();
                 userMetricsService.saveMetrics(request);
-                setUserState(telegramId, "awaiting_metrics_goal");
+                setUserState(telegramId, STATE_AWAITING_METRICS_GOAL);
                 break;
 
-            case "awaiting_metrics_goal":
+            case STATE_AWAITING_METRICS_GOAL:
                 FITNESS_GOAL goal = parseGoal(trimmedInput);
                 if (goal == null) {
                     return """
@@ -109,10 +128,10 @@ public class MetricsCommand extends BaseTelegramCommand {
                         .goal(goal)
                         .build();
                 userMetricsService.saveMetrics(goalRequest);
-                setUserState(telegramId, "awaiting_metrics_workouts");
+                setUserState(telegramId, STATE_AWAITING_METRICS_WORKOUTS);
                 break;
 
-            case "awaiting_metrics_workouts":
+            case STATE_AWAITING_METRICS_WORKOUTS:
                 Integer workouts = parseWorkoutsCount(trimmedInput);
                 if (workouts == null) {
                     return "❌ Пожалуйста, введите число тренировок от 1 до 7:\n" +
@@ -123,10 +142,10 @@ public class MetricsCommand extends BaseTelegramCommand {
                         .workoutsPerWeek(workouts)
                         .build();
                 userMetricsService.saveMetrics(workoutsRequest);
-                setUserState(telegramId, "awaiting_metrics_experience");
+                setUserState(telegramId, STATE_AWAITING_METRICS_EXPERIENCE);
                 break;
 
-            case "awaiting_metrics_experience":
+            case STATE_AWAITING_METRICS_EXPERIENCE:
                 Double experience = parseExperience(trimmedInput);
                 if (experience == null) {
                     return "❌ Пожалуйста, введите корректный тренировочный стаж (в годах, например: 2.5 или 1):\n" +
@@ -137,10 +156,10 @@ public class MetricsCommand extends BaseTelegramCommand {
                         .trainingExperience(experience)
                         .build();
                 userMetricsService.saveMetrics(experienceRequest);
-                setUserState(telegramId, "awaiting_metrics_age");
+                setUserState(telegramId, STATE_AWAITING_METRICS_AGE);
                 break;
 
-            case "awaiting_metrics_age":
+            case STATE_AWAITING_METRICS_AGE:
                 Integer age = parseAge(trimmedInput);
                 if (age == null) {
                     return "❌ Пожалуйста, введите корректный возраст (от 14 до 100):\n" +
@@ -151,10 +170,10 @@ public class MetricsCommand extends BaseTelegramCommand {
                         .age(age)
                         .build();
                 userMetricsService.saveMetrics(ageRequest);
-                setUserState(telegramId, "awaiting_metrics_comment");
+                setUserState(telegramId, STATE_AWAITING_METRICS_COMMENT);
                 break;
 
-            case "awaiting_metrics_comment":
+            case STATE_AWAITING_METRICS_COMMENT:
                 UserMetricsRequest commentRequest = UserMetricsRequest.builder()
                         .telegramId(telegramId)
                         .comment(trimmedInput)
@@ -173,75 +192,62 @@ public class MetricsCommand extends BaseTelegramCommand {
         return getNextQuestion(getUserState(telegramId), false);
     }
 
-    /**
-     * Получить следующий вопрос на основе состояния
-     * @param nextState следующее состояние
-     * @param isError флаг ошибки
-     * @return текст следующего вопроса
-     */
+    private String handleMetricsChoice(Long telegramId, String input) {
+        if ("1".equals(input)) {
+            resetUserState(telegramId);
+            UserMetricsResponse existingMetrics = userMetricsService.getMetricsByTelegramId(telegramId);
+            return "✅ Текущие метрики сохранены.\n\n" + buildSuccessMessage(existingMetrics);
+        } else if ("2".equals(input)) {
+            setUserState(telegramId, STATE_AWAITING_METRICS_WEIGHT);
+            return """
+                 Сбор новых метрик
+                
+                1. Введите ваш текущий вес (в кг, например: 75.5):""";
+        } else {
+            return "❌ Пожалуйста, введите 1 (оставить текущие) или 2 (изменить):\n" +
+                    "1 - Оставить текущие метрики\n" +
+                    "2 - Изменить метрики";
+        }
+    }
+
     private String getNextQuestion(String nextState, boolean isError) {
         if (isError) {
             return "Пожалуйста, введите ответ на предыдущий вопрос.";
         }
 
         return switch (nextState) {
-            case "awaiting_metrics_goal" -> """
+            case STATE_AWAITING_METRICS_GOAL -> """
                     2. Выберите вашу цель:
                     1 - Набор мышечной массы
                     2 - Похудение
                     3 - Поддержание формы
                     Введите номер (1-3):""";
-            case "awaiting_metrics_workouts" -> "3. Сколько тренировок в неделю планируете?\n" +
+            case STATE_AWAITING_METRICS_WORKOUTS -> "3. Сколько тренировок в неделю планируете?\n" +
                     "(Введите число от 1 до 7):";
-            case "awaiting_metrics_experience" -> "4. Ваш тренировочный стаж (в годах):\n" +
+            case STATE_AWAITING_METRICS_EXPERIENCE -> "4. Ваш тренировочный стаж (в годах):\n" +
                     "(Например: 1, 2.5, 0.5):";
-            case "awaiting_metrics_age" -> "5. Ваш возраст:";
-            case "awaiting_metrics_comment" ->
+            case STATE_AWAITING_METRICS_AGE -> "5. Ваш возраст:";
+            case STATE_AWAITING_METRICS_COMMENT ->
                     "6. Комментарий (например: \"Больше внимания хотелось бы уделить отстающим группам мышц: плечи, ноги\"):\n" +
                             "(Если комментария нет - введите любой символ):";
             default -> "Пожалуйста, продолжайте ввод.";
         };
     }
 
-    /**
-     * Построить сообщение об успешном сборе метрик
-     * @param metrics сохраненные метрики
-     * @return форматированное сообщение
-     */
     private String buildSuccessMessage(UserMetricsResponse metrics) {
         StringBuilder sb = new StringBuilder();
-        sb.append("✅ Метрики успешно собраны и сохранены!\n\n");
         sb.append("📋 Ваши метрики:\n");
-        sb.append("• Вес: ").append(metrics.getWeight()).append(" кг\n");
-        sb.append("• Цель: ").append(metrics.getGoalRussianName()).append("\n");
-        sb.append("• Тренировок в неделю: ").append(metrics.getWorkoutsPerWeek()).append("\n");
-        sb.append("• Стаж: ").append(metrics.getTrainingExperience()).append(" лет\n");
-        sb.append("• Возраст: ").append(metrics.getAge()).append(" лет\n");
-
-        String comment = metrics.getComment();
-        if (comment != null && comment.length() > 1 && !comment.matches("^[\\s\\S]{1,2}$")) {
-            sb.append("• Комментарий: ").append(comment);
-        }
-
+        sb.append(metrics.toString());
         sb.append("\n\nЭти данные будут использованы для персонализации рекомендаций.");
 
         return sb.toString();
     }
 
-    /**
-     * Сбросить состояние пользователя
-     * @param telegramId идентификатор пользователя в Telegram
-     */
     private void resetUserState(Long telegramId) {
         userStates.remove(telegramId);
         log.info("{}_СБРОС_СОСТОЯНИЯ: для пользователя {}", COMMAND_NAME, telegramId);
     }
 
-    /**
-     * Распарсить вес из строки
-     * @param input введенная строка
-     * @return вес в кг или null если некорректный ввод
-     */
     private Double parseWeight(String input) {
         try {
             double weight = Double.parseDouble(input.replace(',', '.'));
@@ -252,11 +258,6 @@ public class MetricsCommand extends BaseTelegramCommand {
         }
     }
 
-    /**
-     * Распарсить цель из строки
-     * @param input введенная строка
-     * @return цель или null если некорректный ввод
-     */
     private FITNESS_GOAL parseGoal(String input) {
         try {
             return switch (input.trim()) {
@@ -271,11 +272,6 @@ public class MetricsCommand extends BaseTelegramCommand {
         }
     }
 
-    /**
-     * Распарсить количество тренировок из строки
-     * @param input введенная строка
-     * @return количество тренировок или null если некорректный ввод
-     */
     private Integer parseWorkoutsCount(String input) {
         try {
             int count = Integer.parseInt(input);
@@ -286,11 +282,6 @@ public class MetricsCommand extends BaseTelegramCommand {
         }
     }
 
-    /**
-     * Распарсить стаж из строки
-     * @param input введенная строка
-     * @return стаж в годах или null если некорректный ввод
-     */
     private Double parseExperience(String input) {
         try {
             double experience = Double.parseDouble(input.replace(',', '.'));
@@ -301,11 +292,6 @@ public class MetricsCommand extends BaseTelegramCommand {
         }
     }
 
-    /**
-     * Распарсить возраст из строки
-     * @param input введенная строка
-     * @return возраст или null если некорректный ввод
-     */
     private Integer parseAge(String input) {
         try {
             int age = Integer.parseInt(input);

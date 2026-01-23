@@ -1,6 +1,7 @@
 package ru.cs.vsu.social_network.telegram_bot.service.command.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
@@ -21,7 +22,7 @@ public class SubscriptionCheckCommand extends BaseTelegramCommand {
 
     public SubscriptionCheckCommand(UserService userService,
                                     UserValidator userValidator,
-                                    GymTelegramBot gymTelegramBot) {
+                                    @Lazy GymTelegramBot gymTelegramBot) {
         super(userService, userValidator);
         this.gymTelegramBot = gymTelegramBot;
     }

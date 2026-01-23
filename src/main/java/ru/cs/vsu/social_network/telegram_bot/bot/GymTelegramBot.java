@@ -93,7 +93,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return telegramCommandService.handleInGymCommand(telegramId);
         } else if ("Сменить имя".equalsIgnoreCase(text)) {
             return telegramCommandService.handleChangeNameCommand(telegramId);
-        } else if ("Сбор метрик".equalsIgnoreCase(text)) {
+        } else if ("Тренировочный план".equalsIgnoreCase(text)) {
             return telegramCommandService.handleMetricsCommand(telegramId, null);
         } else if (text.toLowerCase().contains("составить программу")) {
             return telegramCommandService.handleTrainingProgramCommand(telegramId, text);
@@ -114,7 +114,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
                 return telegramCommandService.handleAdminDateInput(telegramId, processedText);
             }
 
-            if (userState != null && userState.startsWith("awaiting_metrics")) {
+            if (userState != null && userState.startsWith("awaiting_training_plan")) {
                 return telegramCommandService.handleMetricsCommand(telegramId, processedText);
             }
 
@@ -170,7 +170,8 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         return switch (command) {
             case "/start" -> handleStartCommand(telegramId, message);
             case "/help" -> telegramCommandService.handleHelpCommand(telegramId);
-            case "/metrics", "/метрики" -> telegramCommandService.handleMetricsCommand(telegramId, input);
+            case "/trainingplan", "/тренировочныйплан", "/metrics", "/метрики" ->
+                    telegramCommandService.handleMetricsCommand(telegramId, input);
             default -> {
                 log.warn("{}_КОМАНДА_НЕИЗВЕСТНАЯ: неизвестная команда '{}' от {}",
                         BOT_NAME, command, telegramId);
@@ -219,7 +220,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
         final KeyboardRow row1 = new KeyboardRow();
         row1.add(new KeyboardButton("Я в зале"));
         row1.add(new KeyboardButton("Сменить имя"));
-        row1.add(new KeyboardButton("Сбор метрик"));
+        row1.add(new KeyboardButton("Тренировочный план"));
         keyboard.add(row1);
 
         final KeyboardRow row2 = new KeyboardRow();

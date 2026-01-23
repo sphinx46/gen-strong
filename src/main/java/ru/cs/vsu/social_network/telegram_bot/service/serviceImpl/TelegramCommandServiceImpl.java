@@ -87,7 +87,7 @@ public class TelegramCommandServiceImpl implements TelegramCommandService {
 
     @Override
     public String handleMetricsCommand(Long telegramId, String input) {
-        return executeCommand("metrics", telegramId, input);
+        return executeCommand("trainingplan", telegramId, input);
     }
 
     @Override

@@ -89,6 +89,44 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return processCommand(telegramId, text, message);
         }
 
+        String userState = telegramCommandService.getUserState(telegramId);
+        log.debug("{}_ТЕКУЩЕЕ_СОСТОЯНИЕ: пользователь {}, состояние: '{}'", BOT_NAME, telegramId, userState);
+
+        if (userState != null) {
+            return processStateBasedMessage(telegramId, text, userState);
+        }
+
+        return processRegularMessage(telegramId, text);
+    }
+
+    private String processStateBasedMessage(Long telegramId, String text, String userState) {
+        log.debug("{}_ОБРАБОТКА_ПО_СОСТОЯНИЮ: состояние '{}', текст '{}'", BOT_NAME, userState, text);
+
+        if (userState.startsWith("awaiting_training_plan")) {
+            return telegramCommandService.handleMetricsCommand(telegramId, text);
+        }
+
+        if ("awaiting_display_name".equals(userState) || "awaiting_new_display_name".equals(userState)) {
+            log.info("{}_ОБРАБОТКА_ИМЕНИ: обработка имени пользователя для состояния {}", BOT_NAME, userState);
+            return telegramCommandService.handleDisplayNameInput(telegramId, text);
+        }
+
+        if (userState.startsWith("awaiting_admin")) {
+            log.info("{}_ОБРАБОТКА_АДМИНСКОГО_ВВОДА: состояние {}, текст '{}'", BOT_NAME, userState, text);
+            return telegramCommandService.handleAdminDateInput(telegramId, text);
+        }
+
+        if (userState.startsWith("awaiting")) {
+            return telegramCommandService.handleTrainingProgramCommand(telegramId, text);
+        }
+
+        log.debug("{}_СОСТОЯНИЕ_НЕ_ОПОЗНАНО: состояние '{}' не обрабатывается", BOT_NAME, userState);
+        return processRegularMessage(telegramId, text);
+    }
+
+    private String processRegularMessage(Long telegramId, String text) {
+        log.debug("{}_ОБРАБОТКА_ОБЫЧНОГО_СООБЩЕНИЯ: текст '{}'", BOT_NAME, text);
+
         if ("Я в зале".equalsIgnoreCase(text)) {
             return telegramCommandService.handleInGymCommand(telegramId);
         } else if ("Сменить имя".equalsIgnoreCase(text)) {
@@ -103,39 +141,13 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             return telegramCommandService.handleAdminMenuCommand(telegramId, text);
         }
 
-        try {
-            String processedText = text.trim();
-            String userState = telegramCommandService.getUserState(telegramId);
-
-            log.debug("{}_ТЕКУЩЕЕ_СОСТОЯНИЕ: пользователь {}, состояние: {}",
-                    BOT_NAME, telegramId, userState);
-
-            if (isDateInput(processedText)) {
-                return telegramCommandService.handleAdminDateInput(telegramId, processedText);
-            }
-
-            if (userState != null && userState.startsWith("awaiting_training_plan")) {
-                return telegramCommandService.handleMetricsCommand(telegramId, processedText);
-            }
-
-            if (userState != null && userState.startsWith("awaiting")) {
-                return telegramCommandService.handleTrainingProgramCommand(telegramId, processedText);
-            }
-
-            if ("awaiting_display_name".equals(userState)) {
-                log.debug("{}_ИМЯ_ВВОД_ОБНАРУЖЕН: состояние корректно, обработка '{}'", BOT_NAME, processedText);
-                return telegramCommandService.handleDisplayNameInput(telegramId, processedText);
-            }
-
-            log.debug("{}_СООБЩЕНИЕ_НЕ_ОБРАБОТАНО: текст '{}' не соответствует текущему состоянию '{}'",
-                    BOT_NAME, processedText, userState);
-            return telegramCommandService.handleUnknownCommand(telegramId);
-
-        } catch (Exception e) {
-            log.error("{}_ОБРАБОТКА_ОШИБКА_ДЕТАЛЬ: ошибка при обработке сообщения '{}' от {}: {}",
-                    BOT_NAME, text, telegramId, e.getMessage(), e);
-            return telegramCommandService.handleUnknownCommand(telegramId);
+        if (isDateInput(text)) {
+            log.debug("{}_ОБНАРУЖЕН_ВВОД_ДАТЫ: текст '{}'", BOT_NAME, text);
+            return telegramCommandService.handleAdminDateInput(telegramId, text);
         }
+
+        log.debug("{}_СООБЩЕНИЕ_НЕ_РАСПОЗНАНО: текст '{}' не соответствует командам", BOT_NAME, text);
+        return telegramCommandService.handleUnknownCommand(telegramId);
     }
 
     private boolean isDateInput(String text) {
@@ -195,6 +207,7 @@ public class GymTelegramBot extends TelegramLongPollingBot {
             final SendMessage message = new SendMessage();
             message.setChatId(chatId.toString());
             message.setText(responseText);
+            message.setParseMode("Markdown");
 
             message.setReplyMarkup(createMainMenuKeyboard(telegramId));
 

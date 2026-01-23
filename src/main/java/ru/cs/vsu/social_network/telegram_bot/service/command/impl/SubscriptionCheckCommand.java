@@ -64,9 +64,7 @@ public class SubscriptionCheckCommand extends BaseTelegramCommand {
     }
 
     private String buildSubscriptionRequirementMessage() {
-        return """
-               🔐 *ТРЕБОВАНИЕ ДОСТУПА*
-               
+        return """    
                ❌ *Вы не подписаны на обязательный канал*
                
                Для использования бота необходимо подписаться на наш канал:

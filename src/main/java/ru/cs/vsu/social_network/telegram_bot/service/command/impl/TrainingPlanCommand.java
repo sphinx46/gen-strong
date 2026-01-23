@@ -15,6 +15,14 @@ import ru.cs.vsu.social_network.telegram_bot.validation.UserValidator;
 public class TrainingPlanCommand extends BaseTelegramCommand {
 
     private static final String COMMAND_NAME = "TRAINING_PLAN_COMMAND";
+    private static final String STATE_AWAITING_TRAINING_PLAN_WEIGHT = "awaiting_training_plan_weight";
+    private static final String STATE_AWAITING_TRAINING_PLAN_GOAL = "awaiting_training_plan_goal";
+    private static final String STATE_AWAITING_TRAINING_PLAN_WORKOUTS = "awaiting_training_plan_workouts";
+    private static final String STATE_AWAITING_TRAINING_PLAN_EXPERIENCE = "awaiting_training_plan_experience";
+    private static final String STATE_AWAITING_TRAINING_PLAN_AGE = "awaiting_training_plan_age";
+    private static final String STATE_AWAITING_TRAINING_PLAN_COMMENT = "awaiting_training_plan_comment";
+    private static final String STATE_AWAITING_TRAINING_PLAN_CHOICE = "awaiting_training_plan_choice";
+
     private final UserMetricsService userMetricsService;
 
     public TrainingPlanCommand(UserService userService, UserValidator userValidator,
@@ -46,16 +54,35 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
     }
 
     private String initializeTrainingPlanCollection(Long telegramId) {
-        setUserState(telegramId, "awaiting_training_plan_weight");
+        boolean metricsExist = userMetricsService.existsByTelegramId(telegramId);
 
+        if (metricsExist) {
+            UserMetricsResponse existingMetrics = userMetricsService.getMetricsByTelegramId(telegramId);
+            if (existingMetrics != null) {
+                setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_CHOICE);
+                return buildExistingMetricsMessage(existingMetrics);
+            }
+        }
+
+        setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_WEIGHT);
         log.info("{}_ИНИЦИАЛИЗАЦИЯ: начало сбора данных для тренировочного плана пользователя {}", COMMAND_NAME, telegramId);
-
         return """
                🏋️‍♂️ *СОСТАВЛЕНИЕ ТРЕНИРОВОЧНОГО ПЛАНА*
                
                Я создам персонализированный план тренировок на основе ваших данных.
                
                1. Введите ваш текущий вес (в кг, например: 75.5):""";
+    }
+
+    private String buildExistingMetricsMessage(UserMetricsResponse metrics) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Ваши текущие данные:\n");
+        sb.append(metrics.toString()).append("\n\n");
+        sb.append("Вы хотите:\n");
+        sb.append("1️⃣ *Использовать текущие данные* - создать тренировочный план на основе этих данных\n");
+        sb.append("2️⃣ *Ввести новые данные* - обновить ваши данные\n\n");
+        sb.append("Введите 1 или 2:");
+        return sb.toString();
     }
 
     private String processTrainingPlanInput(Long telegramId, String input) {
@@ -71,7 +98,10 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
         String trimmedInput = input.trim();
 
         switch (state) {
-            case "awaiting_training_plan_weight":
+            case STATE_AWAITING_TRAINING_PLAN_CHOICE:
+                return handleTrainingPlanChoice(telegramId, trimmedInput);
+
+            case STATE_AWAITING_TRAINING_PLAN_WEIGHT:
                 Double weight = parseWeight(trimmedInput);
                 if (weight == null) {
                     return "❌ Пожалуйста, введите корректный вес (например: 75.5 или 80):\n" +
@@ -82,10 +112,10 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
                         .weight(weight)
                         .build();
                 userMetricsService.saveMetrics(request);
-                setUserState(telegramId, "awaiting_training_plan_goal");
+                setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_GOAL);
                 break;
 
-            case "awaiting_training_plan_goal":
+            case STATE_AWAITING_TRAINING_PLAN_GOAL:
                 FITNESS_GOAL goal = parseGoal(trimmedInput);
                 if (goal == null) {
                     return """
@@ -100,10 +130,10 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
                         .goal(goal)
                         .build();
                 userMetricsService.saveMetrics(goalRequest);
-                setUserState(telegramId, "awaiting_training_plan_workouts");
+                setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_WORKOUTS);
                 break;
 
-            case "awaiting_training_plan_workouts":
+            case STATE_AWAITING_TRAINING_PLAN_WORKOUTS:
                 Integer workouts = parseWorkoutsCount(trimmedInput);
                 if (workouts == null) {
                     return "❌ Пожалуйста, введите число тренировок от 1 до 7:\n" +
@@ -114,10 +144,10 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
                         .workoutsPerWeek(workouts)
                         .build();
                 userMetricsService.saveMetrics(workoutsRequest);
-                setUserState(telegramId, "awaiting_training_plan_experience");
+                setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_EXPERIENCE);
                 break;
 
-            case "awaiting_training_plan_experience":
+            case STATE_AWAITING_TRAINING_PLAN_EXPERIENCE:
                 Double experience = parseExperience(trimmedInput);
                 if (experience == null) {
                     return "❌ Пожалуйста, введите корректный тренировочный стаж (в годах, например: 2.5 или 1):\n" +
@@ -128,10 +158,10 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
                         .trainingExperience(experience)
                         .build();
                 userMetricsService.saveMetrics(experienceRequest);
-                setUserState(telegramId, "awaiting_training_plan_age");
+                setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_AGE);
                 break;
 
-            case "awaiting_training_plan_age":
+            case STATE_AWAITING_TRAINING_PLAN_AGE:
                 Integer age = parseAge(trimmedInput);
                 if (age == null) {
                     return "❌ Пожалуйста, введите корректный возраст (от 14 до 100):\n" +
@@ -142,10 +172,10 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
                         .age(age)
                         .build();
                 userMetricsService.saveMetrics(ageRequest);
-                setUserState(telegramId, "awaiting_training_plan_comment");
+                setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_COMMENT);
                 break;
 
-            case "awaiting_training_plan_comment":
+            case STATE_AWAITING_TRAINING_PLAN_COMMENT:
                 UserMetricsRequest commentRequest = UserMetricsRequest.builder()
                         .telegramId(telegramId)
                         .comment(trimmedInput)
@@ -164,24 +194,44 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
         return getNextQuestion(getUserState(telegramId), false);
     }
 
+    private String handleTrainingPlanChoice(Long telegramId, String input) {
+        if ("1".equals(input)) {
+            resetUserState(telegramId);
+            UserMetricsResponse existingMetrics = userMetricsService.getMetricsByTelegramId(telegramId);
+            return "✅ Использую ваши текущие данные для составления плана!\n\n" + buildSuccessMessage(existingMetrics);
+        } else if ("2".equals(input)) {
+            setUserState(telegramId, STATE_AWAITING_TRAINING_PLAN_WEIGHT);
+            return """
+               🏋️‍♂️ *ОБНОВЛЕНИЕ ДАННЫХ ДЛЯ ТРЕНИРОВОЧНОГО ПЛАНА*
+               
+               Введите новые данные для составления персонализированного плана.
+               
+               1. Введите ваш текущий вес (в кг, например: 75.5):""";
+        } else {
+            return "❌ Пожалуйста, введите 1 или 2:\n" +
+                    "1️⃣ Использовать текущие данные\n" +
+                    "2️⃣ Ввести новые данные";
+        }
+    }
+
     private String getNextQuestion(String nextState, boolean isError) {
         if (isError) {
             return "Пожалуйста, введите ответ на предыдущий вопрос.";
         }
 
         return switch (nextState) {
-            case "awaiting_training_plan_goal" -> """
+            case STATE_AWAITING_TRAINING_PLAN_GOAL -> """
                     2. Выберите вашу цель:
                     1 - Набор мышечной массы
                     2 - Похудение
                     3 - Поддержание формы
                     Введите номер (1-3):""";
-            case "awaiting_training_plan_workouts" -> "3. Сколько тренировок в неделю планируете?\n" +
+            case STATE_AWAITING_TRAINING_PLAN_WORKOUTS -> "3. Сколько тренировок в неделю планируете?\n" +
                     "(Введите число от 1 до 7):";
-            case "awaiting_training_plan_experience" -> "4. Ваш тренировочный стаж (в годах):\n" +
+            case STATE_AWAITING_TRAINING_PLAN_EXPERIENCE -> "4. Ваш тренировочный стаж (в годах):\n" +
                     "(Например: 1, 2.5, 0.5):";
-            case "awaiting_training_plan_age" -> "5. Ваш возраст:";
-            case "awaiting_training_plan_comment" ->
+            case STATE_AWAITING_TRAINING_PLAN_AGE -> "5. Ваш возраст:";
+            case STATE_AWAITING_TRAINING_PLAN_COMMENT ->
                     "6. Комментарий (например: \"Больше внимания хотелось бы уделить отстающим группам мышц: плечи, ноги\"):\n" +
                             "(Если комментария нет - введите любой символ):";
             default -> "Пожалуйста, продолжайте ввод.";
@@ -192,22 +242,12 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
         StringBuilder sb = new StringBuilder();
         sb.append("✅ Данные для тренировочного плана успешно собраны!\n\n");
         sb.append("📋 Ваши данные:\n");
-        sb.append("• Вес: ").append(metrics.getWeight()).append(" кг\n");
-        sb.append("• Цель: ").append(metrics.getGoalRussianName()).append("\n");
-        sb.append("• Тренировок в неделю: ").append(metrics.getWorkoutsPerWeek()).append("\n");
-        sb.append("• Стаж: ").append(metrics.getTrainingExperience()).append(" лет\n");
-        sb.append("• Возраст: ").append(metrics.getAge()).append(" лет\n");
-
-        String comment = metrics.getComment();
-        if (comment != null && comment.length() > 1 && !comment.matches("^[\\s\\S]{1,2}$")) {
-            sb.append("• Комментарий: ").append(comment);
-        }
-
+        sb.append(metrics.toString());
         sb.append("\n\n⏳ *Генерация тренировочного плана...*\n");
         sb.append("На основе ваших данных и базы знаний формируется персонализированный план.\n");
         sb.append("Пожалуйста, подождите несколько секунд...\n\n");
 
-        // TODO: Интеграция с Spring AI RAG для генерации плана на основе книг и статей");
+       // TODO: Интеграция с Spring AI RAG
 
         return sb.toString();
     }
@@ -233,7 +273,7 @@ public class TrainingPlanCommand extends BaseTelegramCommand {
                 case "1" -> FITNESS_GOAL.MUSCLE_GAIN;
                 case "2" -> FITNESS_GOAL.WEIGHT_LOSS;
                 case "3" -> FITNESS_GOAL.MAINTENANCE;
-                default -> null;
+                default -> FITNESS_GOAL.valueOf(input.toUpperCase());
             };
         } catch (IllegalArgumentException e) {
             log.warn("{}_ОШИБКА_ПАРСИНГА_ЦЕЛИ: некорректный ввод '{}'", COMMAND_NAME, input);

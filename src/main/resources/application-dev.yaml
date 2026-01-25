@@ -30,26 +30,26 @@ spring:
           provider_disables_autocommit: true
 
   ai:
-    gemini:
-      api-key: ${GEMINI_API_KEY:}
-      chat:
-        options:
-          model: gemini-1.5-flash-latest
-          temperature: 0.3
-          top-p: 0.9
-          top-k: 40
-      embedding:
-        enabled: true
-        options:
-          model: embedding-001
-          dimensions: 768
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            model: gemini-1.5-flash-latest
+            temperature: 0.3
+            top-p: 0.9
+            top-k: 40
+        embedding:
+          api-key: ${GEMINI_API_KEY:}
+          text:
+            options:
+              model: embedding-001
+              task-type: RETRIEVAL_DOCUMENT
     vectorstore:
       pgvector:
         initialize-schema: true
-        index-type: COSINE_HNSW
-        dimensions: 768
-        distance-type: cosine_distance
-        similarity-search-top-k: 5
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
 
   flyway:
     enabled: false
@@ -79,6 +79,7 @@ app:
     chunk-overlap: 200
     max-chunks-per-request: 5
     temperature: 0.3
+    documentPath: "classpath:/books/**/*.pdf"
 
 server:
   port: 8081

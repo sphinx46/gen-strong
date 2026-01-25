@@ -4,18 +4,14 @@ spring:
       on-profile: test
 
   ai:
-    gemini:
-      api-key: test-key
-      enabled: true
-      chat:
-        enabled: true
-        options:
-          model: gemini-1.5-flash-latest
-      embedding:
-        enabled: true
-        options:
-          model: embedding-001
-
+    google:
+      genai:
+        api-key: test-key
+        embedding:
+          api-key: test-key
+          text:
+            options:
+              model: embedding-001
     vectorstore:
       pgvector:
         enabled: false
@@ -60,6 +56,7 @@ app:
   security:
     admin-telegram-ids: "123456789"
     max-login-attempts: 3
+    documentPath: "classpath:/books/**/*.pdf"
 
   scheduler:
     enabled: false

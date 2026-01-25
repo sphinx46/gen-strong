@@ -37,9 +37,6 @@ public class DocumentEntity extends BaseEntity {
     @Column(name = "file_path", length = 500)
     private String filePath;
 
-    @Column(name = "file_size_bytes")
-    private Long fileSizeBytes;
-
     @Column(name = "content_type", length = 100)
     private String contentType;
 
@@ -60,9 +57,6 @@ public class DocumentEntity extends BaseEntity {
     @Builder.Default
     private String language = "ru";
 
-    @Column(name = "embedding_vector", columnDefinition = "vector(768)")
-    private float[] embeddingVector;
-
     @Column(name = "token_count")
     private Integer tokenCount;
 
@@ -80,17 +74,5 @@ public class DocumentEntity extends BaseEntity {
     @Transient
     public String getChunkId() {
         return String.format("%s_%03d", fileName, chunkIndex);
-    }
-
-    @Transient
-    public boolean isFirstChunk() {
-        return chunkIndex != null && chunkIndex == 0;
-    }
-
-
-    @Transient
-    public boolean isLastChunk() {
-        return chunkIndex != null && totalChunks != null
-                && chunkIndex == totalChunks - 1;
     }
 }

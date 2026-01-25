@@ -39,4 +39,8 @@ build/
 
 /.mvn/wrapper/
 /logs/
-
+/src/main/resources/
+# PDF files
+*.pdf
+**/*.pdf
+src/main/resources/books/
